@@ -1,5 +1,33 @@
+import { mainColors } from "@/utils/global-theme";
+import Octicons from '@expo/vector-icons/Octicons';
 import { Tabs } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
-  return <Tabs />;
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: mainColors.background }}>
+      <StatusBar style="auto" />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: mainColors.background,
+            borderTopColor: mainColors.accent,
+          },
+          tabBarActiveTintColor: mainColors.primary,
+          tabBarInactiveTintColor: mainColors.secondary,
+        }}
+
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, size }) => <Octicons name="home" size={size} color={color} />,
+          }}
+        />
+      </Tabs>
+    </SafeAreaView>
+  );
 }

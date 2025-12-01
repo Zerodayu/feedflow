@@ -2,6 +2,7 @@ import DeviceModal from '@/components/DeviceConnectionModal';
 import useBLE from '@/lib/useBLE';
 import { buttonS } from '@/styles/buttons';
 import { mainColors } from '@/utils/global-theme';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -37,6 +38,7 @@ export default function Index() {
 
   return (
     <View style={styles.base}>
+      <Link href="/(tabs)" style={buttonS.outline}>Go to Some Path</Link>
       <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
       <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>

@@ -1,4 +1,3 @@
-
 const dark = {
   primary: "#3b82f6",
   primaryForeground: "#ffffff",
@@ -27,10 +26,10 @@ const light = {
   destructive: "#ef4444",
 }
 
-const radius ={
-  default: 8,
+const radius = {
+  default: 99,
 }
-
+  
 const theme = dark;
 
 export const mainColors = {

@@ -5,7 +5,7 @@ import { mainColors } from "../utils/global-theme";
 export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerStyle: { backgroundColor: mainColors.background }, headerTitleStyle: { color: mainColors.foreground } }}>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
       <Stack.Screen name="index" />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>

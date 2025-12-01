@@ -23,6 +23,7 @@ export const buttonS = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
+    color: mainColors.accentForeground,
     borderColor: mainColors.accent,
     borderRadius: mainColors.radius,
     alignItems: "center",
