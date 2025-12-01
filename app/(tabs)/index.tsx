@@ -71,7 +71,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     minWidth: "100%",
     padding: 10,
-    marginTop: 20,
     gap: 6,
   },
   container: {
