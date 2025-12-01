@@ -1,4 +1,4 @@
-import { mainColors } from "@/utils/global-colors";
+import { mainColors } from "@/utils/global-theme";
 import React, { FC, useCallback } from "react";
 import {
   FlatList,
@@ -65,6 +65,7 @@ const DeviceModal: FC<DeviceModalProps> = (props) => {
       transparent={false}
       visible={visible}
       allowSwipeDismissal
+      onRequestClose={closeModal}
     >
       <SafeAreaView style={modalStyle.modalTitle}>
         <Text style={modalStyle.modalTitleText}>

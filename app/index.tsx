@@ -1,7 +1,7 @@
 import DeviceModal from '@/components/DeviceConnectionModal';
 import useBLE from '@/lib/useBLE';
 import { buttonS } from '@/styles/buttons';
-import { mainColors } from '@/utils/global-colors';
+import { mainColors } from '@/utils/global-theme';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -38,7 +38,7 @@ export default function Index() {
   return (
     <View style={styles.base}>
       <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
-      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
+      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.outline}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>
       <DeviceModal
