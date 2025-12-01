@@ -1,5 +1,6 @@
 import DeviceModal from '@/components/DeviceConnectionModal';
 import useBLE from '@/lib/useBLE';
+import { mainColors } from '@/utils/global-colors';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   ctaButton: {
-    backgroundColor: "#FF6060",
+    backgroundColor: mainColors.primary,
     justifyContent: "center",
     alignItems: "center",
     height: 50,
@@ -70,6 +71,6 @@ const styles = StyleSheet.create({
   ctaButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: mainColors.foreground,
   },
 });

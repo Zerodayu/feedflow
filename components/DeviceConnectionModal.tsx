@@ -1,3 +1,4 @@
+import { mainColors } from "@/utils/global-colors";
 import React, { FC, useCallback } from "react";
 import {
   FlatList,
@@ -81,7 +82,7 @@ const DeviceModal: FC<DeviceModalProps> = (props) => {
 const modalStyle = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: mainColors.background,
   },
   modalFlatlistContiner: {
     flex: 1,
@@ -89,7 +90,7 @@ const modalStyle = StyleSheet.create({
   },
   modalCellOutline: {
     borderWidth: 1,
-    borderColor: "black",
+    borderColor: mainColors.accent,
     alignItems: "center",
     marginHorizontal: 20,
     paddingVertical: 15,
@@ -97,17 +98,18 @@ const modalStyle = StyleSheet.create({
   },
   modalTitle: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: mainColors.background,
   },
   modalTitleText: {
     marginTop: 40,
     fontSize: 30,
     fontWeight: "bold",
+    color: mainColors.foreground,
     marginHorizontal: 20,
     textAlign: "center",
   },
   ctaButton: {
-    backgroundColor: "#FF6060",
+    backgroundColor: mainColors.primary,
     justifyContent: "center",
     alignItems: "center",
     height: 50,
@@ -118,7 +120,7 @@ const modalStyle = StyleSheet.create({
   ctaButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: mainColors.foreground,
   },
 });
 
