@@ -27,7 +27,7 @@ const light = {
   destructive: "#ef4444",
 }
 
-const theme = light;
+const theme = dark;
 
 export const mainColors = {
   primary: theme.primary,

@@ -64,6 +64,7 @@ const DeviceModal: FC<DeviceModalProps> = (props) => {
       animationType="slide"
       transparent={false}
       visible={visible}
+      allowSwipeDismissal
     >
       <SafeAreaView style={modalStyle.modalTitle}>
         <Text style={modalStyle.modalTitleText}>

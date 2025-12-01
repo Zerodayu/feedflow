@@ -10,9 +10,10 @@ export default function Index() {
     requestPermission,
     scanForPeripherals,
     allDevices,
+    connectToDevice,
+    connectedDevice,
+    disconnectFromDevice,
   } = useBLE();
-
-  console.log('allDevices:', allDevices);
 
   const hideModal = () => {
     setIsModalVisible(false);
@@ -35,13 +36,14 @@ export default function Index() {
 
   return (
     <View style={styles.base}>
-      <TouchableOpacity onPress={openModal} style={styles.ctaButton}>
-        <Text style={styles.ctaButtonText}>Connect</Text>
+      <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
+      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
+        <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>
       <DeviceModal
         devices={allDevices}
         visible={isModalVisible}
-        connectToPeripheral={() => {}}
+        connectToPeripheral={connectToDevice}
         closeModal={hideModal}
       />
     </View>
@@ -54,10 +56,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    backgroundColor: mainColors.background,
   },
   link: {
     marginTop: 15,
     paddingVertical: 15,
+    color: mainColors.accent,
   },
   ctaButton: {
     backgroundColor: mainColors.primary,

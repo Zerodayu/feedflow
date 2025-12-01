@@ -11,6 +11,7 @@ interface BluetoothLowEnergyApi {
   allDevices: Device[];
   connectToDevice: (deviceId: Device) => Promise<void>;
   connectedDevice: Device | null;
+  disconnectFromDevice(): void;
 }
 
 export default function useBLE(): BluetoothLowEnergyApi {
@@ -99,7 +100,14 @@ export default function useBLE(): BluetoothLowEnergyApi {
       await deviceConnection.discoverAllServicesAndCharacteristics();
       bleManager.stopDeviceScan();
     } catch (error) {
-      console.log('Connection error:', error);
+      console.error('Connection error:', error);
+    }
+  }
+
+  const disconnectFromDevice = () => {
+    if (connectedDevice) {
+      bleManager.cancelDeviceConnection(connectedDevice.id);
+      setConnectedDevice(null);
     }
   }
 
@@ -109,5 +117,6 @@ export default function useBLE(): BluetoothLowEnergyApi {
     allDevices,
     connectToDevice,
     connectedDevice,
+    disconnectFromDevice,
   }
 }
