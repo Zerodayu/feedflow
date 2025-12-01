@@ -28,4 +28,20 @@ export const buttonS = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  ghost: {
+    backgroundColor: "transparent",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: mainColors.radius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  destructive: {
+    backgroundColor: mainColors.destructive,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: mainColors.radius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 })

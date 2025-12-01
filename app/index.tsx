@@ -38,7 +38,7 @@ export default function Index() {
   return (
     <View style={styles.base}>
       <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
-      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.outline}>
+      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>
       <DeviceModal
