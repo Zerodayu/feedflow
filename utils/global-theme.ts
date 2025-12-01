@@ -30,7 +30,7 @@ const radius = {
   default: 99,
 }
   
-const theme = dark;
+const theme = light;
 
 export const mainColors = {
   primary: theme.primary,
@@ -46,4 +46,8 @@ export const mainColors = {
   destructive: theme.destructive,
 
   radius: radius.default,
+
+  sm: 8,
+  md: 12,
+  lg: 16,
 }
