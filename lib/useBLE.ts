@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise */
 
 import * as ExpoDevice from "expo-device";
-import { useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { BleManager, Device } from "react-native-ble-plx";
 
@@ -9,18 +9,15 @@ interface BluetoothLowEnergyApi {
   requestPermission(): Promise<boolean>;
   scanForPeripherals(): void;
   allDevices: Device[];
+  connectToDevice: (deviceId: Device) => Promise<void>;
+  connectedDevice: Device | null;
 }
 
 export default function useBLE(): BluetoothLowEnergyApi {
-  const bleManagerRef = useRef<BleManager | null>(null);
+  const bleManager = useMemo(() => new BleManager(), []);
   const [allDevices, setAllDevices] = useState<Device[]>([]);
+  const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
 
-  const getBleManager = () => {
-    if (!bleManagerRef.current) {
-      bleManagerRef.current = new BleManager();
-    }
-    return bleManagerRef.current;
-  };
 
   const requestAndroidPermission = async () => {
     const bluetoothScanPermission = await PermissionsAndroid.request(
@@ -81,7 +78,7 @@ export default function useBLE(): BluetoothLowEnergyApi {
   }
 
   const scanForPeripherals = () =>
-    getBleManager().startDeviceScan(null, null, (error, device) => {
+    bleManager.startDeviceScan(null, null, (error, device) => {
       if (error) {
         console.log(error);
       }
@@ -95,9 +92,22 @@ export default function useBLE(): BluetoothLowEnergyApi {
       }
     });
 
+  const connectToDevice = async (device: Device) => {
+    try {
+      const deviceConnection = await bleManager.connectToDevice(device.id);
+      setConnectedDevice(deviceConnection);
+      await deviceConnection.discoverAllServicesAndCharacteristics();
+      bleManager.stopDeviceScan();
+    } catch (error) {
+      console.log('Connection error:', error);
+    }
+  }
+
   return {
     scanForPeripherals,
     requestPermission,
     allDevices,
+    connectToDevice,
+    connectedDevice,
   }
 }
