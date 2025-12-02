@@ -33,6 +33,42 @@ DallasTemperature sensors(&oneWire);
 Servo myservo;
 int servoPin = 23;
 
+// ------------------- TIMING / FILTER -------------------
+const float FAST_ALPHA = 0.90f;
+const float SLOW_ALPHA = 0.40f;
+const float JUMP_THRESHOLD_KG = 0.02f;
+const float DETECT_THRESHOLD_KG = 0.02f;
+const float TEMP_SAFE_LIMIT = 33.0f;
+const unsigned long TEMP_INTERVAL_MS = 2000UL;
+
+// ------------------- SERVO TIMING -----------------
+int servoAngle = 0;
+int servoDir = 1;
+unsigned long lastServoStep = 0;
+unsigned long servoStepInterval = 20;
+int idleServoStep = 5;
+
+// ------------------- FEEDING PARAMETERS -----------------
+bool feedRequestActive = false;
+float targetKg = 0.0f;
+float startWeight = 0.0f;
+unsigned long feedStartTime = 0;
+const unsigned long FEED_MAX_DURATION_MS = 30000UL;
+const float FEED_MAX_KG = 5.0f;
+
+int feedOpenAngle = 130;
+int feedCloseAngle = 30;
+int feedServoDir = 1;
+int feedServoStep = 8;
+unsigned long feedServoInterval = 60;
+unsigned long lastFeedServoTime = 0;
+
+// ------------------- VARIABLES --------------------
+float filteredKg = 0.0f;
+float rawBuf = 0.0f;
+unsigned long lastTempTime = 0;
+float lastTemp = 0.0f;
+
 // Helper to write a 0..360 "angle" to the servo by mapping to microsecond pulses.
 // This lets you address the servo as if it had a 360° range.
 void writeServo360(int angle)
@@ -159,7 +195,10 @@ void loop()
     feedRequestActive = false;
     servoAngle = feedCloseAngle;
     writeServo360(servoAngle);
-    SerialBT.println("TEMP_TOO_HIGH");
+    if (deviceConnected) {
+      pCharData->setValue("TEMP_TOO_HIGH");
+      pCharData->notify();
+    }
     Serial.println("TEMP TOO HIGH — SERVO STOPPED!");
     return;
   }
@@ -181,6 +220,10 @@ void loop()
     if (isnan(tempC))
       tempC = 0.0f;
     lastTemp = tempC;
+    Serial.print("Temp C: ");
+    Serial.print(tempC);
+    Serial.print(" | Weight kg: ");
+    Serial.println(filteredKg, 3);
 
     float outKg = (filteredKg >= DETECT_THRESHOLD_KG) ? filteredKg : 0.0f;
 
@@ -193,43 +236,6 @@ void loop()
     lastTempTime = now;
   }
 
-  // ----- CHECK FOR BLUETOOTH COMMANDS -----
-  if (SerialBT.available())
-  {
-    String cmd = SerialBT.readStringUntil('\n');
-    cmd.trim();
-    Serial.print("BT RX: ");
-    Serial.println(cmd);
-
-    if (cmd.startsWith("FEED_NOW:"))
-    {
-      float req = cmd.substring(9).toFloat();
-      if (req > 0.0f && req <= FEED_MAX_KG)
-      {
-        targetKg = req;
-        startWeight = filteredKg;
-        feedRequestActive = true;
-        feedStartTime = now;
-        lastFeedServoTime = now;
-        servoAngle = feedCloseAngle;
-        writeServo360(servoAngle);
-        SerialBT.println("FEEDING_STARTED");
-      }
-      else
-      {
-        SerialBT.println("INVALID_AMOUNT");
-      }
-    }
-    else if (cmd == "PING")
-    {
-      SerialBT.println("PONG");
-    }
-    else
-    {
-      SerialBT.println("UNKNOWN_CMD");
-    }
-  }
-
   // ----- FEEDING LOGIC -----
   if (feedRequestActive)
   {
@@ -237,7 +243,10 @@ void loop()
     if (now - feedStartTime > FEED_MAX_DURATION_MS)
     {
       feedRequestActive = false;
-      SerialBT.println("FEED_TIMEOUT");
+      if (deviceConnected) {
+        pCharData->setValue("FEED_TIMEOUT");
+        pCharData->notify();
+      }
       servoAngle = feedCloseAngle;
       writeServo360(servoAngle);
     }
@@ -250,7 +259,10 @@ void loop()
       if (dispensed >= targetKg)
       {
         feedRequestActive = false;
-        SerialBT.println("FEEDING_DONE");
+        if (deviceConnected) {
+          pCharData->setValue("FEEDING_DONE");
+          pCharData->notify();
+        }
         servoAngle = feedCloseAngle;
         writeServo360(servoAngle);
       }
