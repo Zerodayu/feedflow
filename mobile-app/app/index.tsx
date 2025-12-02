@@ -1,5 +1,5 @@
 import DeviceModal from '@/components/DeviceConnectionModal';
-import useBLE from '@/lib/useBLE';
+import { useBLEContext } from '@/contexts/BLEprovider';
 import { buttonS } from '@/styles/buttons';
 import { mainColors } from '@/utils/global-theme';
 import { Link } from 'expo-router';
@@ -15,8 +15,9 @@ export default function Index() {
     connectToDevice,
     connectedDevice,
     disconnectFromDevice,
-    weight
-  } = useBLE();
+    weight,
+    temperature
+  } = useBLEContext();
 
   const hideModal = () => {
     setIsModalVisible(false);
@@ -35,13 +36,12 @@ export default function Index() {
     }
   };
 
-
-
   return (
     <View style={styles.base}>
       <Link href="/(tabs)" style={buttonS.outline}>Go to Some Path</Link>
       <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
       <Text style={styles.ctaButtonText}>Weight: {weight} kg</Text>
+      <Text style={styles.ctaButtonText}>Temperature: {temperature} °C</Text>
       <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>

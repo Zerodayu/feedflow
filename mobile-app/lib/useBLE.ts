@@ -18,6 +18,7 @@ interface BluetoothApi {
   disconnectFromDevice(): void;
   sendCommand: (command: string) => Promise<void>;
   weight: number;
+  temperature: number;
 }
 
 const bleManager = new BleManager();
@@ -26,6 +27,7 @@ export default function useBLE(): BluetoothApi {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [weight, setWeight] = useState<number>(0);
+  const [temperature, setTemperature] = useState<number>(0);
 
   const requestPermission = async () => {
     if (Platform.OS === "android") {
@@ -130,11 +132,15 @@ export default function useBLE(): BluetoothApi {
     const rawData = decode(characteristic.value);
     console.log("Received data:", rawData);
 
-    // Parse the second value from comma-separated data
     const values = rawData.split(",");
     if (values.length >= 2) {
       const weightValue = parseFloat(values[1]);
       setWeight(weightValue);
+    }
+
+     if (values.length >= 1) {
+      const temperatureValue = parseFloat(values[0]);
+      setTemperature(temperatureValue);
     }
   };
 
@@ -159,5 +165,6 @@ export default function useBLE(): BluetoothApi {
     disconnectFromDevice,
     sendCommand,
     weight,
+    temperature,
   };
 }

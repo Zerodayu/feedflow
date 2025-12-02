@@ -1,13 +1,16 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { mainColors } from "../utils/global-theme";
+import { BLEProvider } from '@/contexts/BLEprovider';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerStyle: { backgroundColor: mainColors.background }, headerTitleStyle: { color: mainColors.foreground } }}>
+    <BLEProvider>
       <StatusBar style="dark" />
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+      <Stack screenOptions={{ headerStyle: { backgroundColor: mainColors.background }, headerTitleStyle: { color: mainColors.foreground } }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </BLEProvider>
   );
 }
