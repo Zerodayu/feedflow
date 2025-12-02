@@ -83,7 +83,8 @@ export default function useBLE(): BluetoothLowEnergyApi {
       if (error) {
         console.log(error);
       }
-      if (device && device.name?.includes("ESP32_Test")) {
+      // scan bluetooth
+      if (device && device.name?.includes("ESP32_Test")) { 
         setAllDevices((prevState: Device[]) => {
           if (!isDuplicateDevice(prevState, device)) {
             return [...prevState, device];
