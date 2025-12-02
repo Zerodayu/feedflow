@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { BleManager, Device } from "react-native-ble-plx";
+import { decode as atob, encode as btoa } from "base-64";
 
 const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const CHAR_UUID_DATA = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -78,7 +79,7 @@ export default function useBLE(): BluetoothApi {
             return;
           }
           if (characteristic?.value) {
-            const data = Buffer.from(characteristic.value, "base64").toString();
+            const data = atob(characteristic.value);
             console.log("Received data:", data);
           }
         }
@@ -99,7 +100,7 @@ export default function useBLE(): BluetoothApi {
     if (!connectedDevice) return;
 
     try {
-      const encoded = Buffer.from(command).toString("base64");
+      const encoded = btoa(command);
       await connectedDevice.writeCharacteristicWithResponseForService(
         SERVICE_UUID,
         CHAR_UUID_COMMAND,

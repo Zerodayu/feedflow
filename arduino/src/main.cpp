@@ -148,6 +148,10 @@ void setup()
 
   // ---------- TEMPERATURE ----------
   sensors.begin();
+  // Add diagnostic info
+  Serial.print("Found ");
+  Serial.print(sensors.getDeviceCount());
+  Serial.println(" DS18B20 devices");
 
   // ---------- SERVO ----------
   myservo.attach(servoPin, 500, 2400);
@@ -189,20 +193,6 @@ void loop()
 {
   unsigned long now = millis();
 
-  // ----- TEMPERATURE SAFETY -----
-  if (lastTemp >= TEMP_SAFE_LIMIT)
-  {
-    feedRequestActive = false;
-    servoAngle = feedCloseAngle;
-    writeServo360(servoAngle);
-    if (deviceConnected) {
-      pCharData->setValue("TEMP_TOO_HIGH");
-      pCharData->notify();
-    }
-    Serial.println("TEMP TOO HIGH — SERVO STOPPED!");
-    return;
-  }
-
   // ----- UPDATE LOAD CELL -----
   if (LoadCell.update())
   {
@@ -217,8 +207,14 @@ void loop()
   {
     sensors.requestTemperatures();
     float tempC = sensors.getTempCByIndex(0);
-    if (isnan(tempC))
-      tempC = 0.0f;
+    
+    // Add validation - DS18B20 returns -127 on error
+    if (tempC == -127.0f || isnan(tempC))
+    {
+      Serial.println("ERROR: Temperature sensor not responding!");
+      tempC = 0.0f; // or use lastTemp if you want to keep previous value
+    }
+    
     lastTemp = tempC;
     Serial.print("Temp C: ");
     Serial.print(tempC);
@@ -234,6 +230,21 @@ void loop()
     pCharData->notify();
 
     lastTempTime = now;
+  }
+
+  // ----- TEMPERATURE SAFETY -----
+  // Move this check AFTER reading temperature
+  if (lastTemp >= TEMP_SAFE_LIMIT && lastTemp > 0)
+  {
+    feedRequestActive = false;
+    servoAngle = feedCloseAngle;
+    writeServo360(servoAngle);
+    if (deviceConnected) {
+      pCharData->setValue("TEMP_TOO_HIGH");
+      pCharData->notify();
+    }
+    Serial.println("TEMP TOO HIGH — SERVO STOPPED!");
+    return;
   }
 
   // ----- FEEDING LOGIC -----
