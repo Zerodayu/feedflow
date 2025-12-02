@@ -11,13 +11,6 @@ export default function Home() {
 
   return (
     <View style={styles.base}>
-      {/* header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>FeedFlow</Text>
-        <Text style={connectedDevice ? styles.connectedText : styles.disconnectedText}>
-          {connectedDevice ? `Connected: ${connectedDevice.name}` : "Disconnected"}
-        </Text>
-      </View>
 
       {/* info boxes */}
       <View style={styles.box}>
