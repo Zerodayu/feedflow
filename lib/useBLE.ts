@@ -2,20 +2,27 @@
 
 import { useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
-import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
+import { BleManager, Device } from "react-native-ble-plx";
+
+const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const CHAR_UUID_DATA = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+const CHAR_UUID_COMMAND = "beb5483e-36e1-4688-b7f5-ea07361b26a9";
 
 interface BluetoothApi {
   requestPermission(): Promise<boolean>;
-  scanForPeripherals(): Promise<void>;
-  allDevices: BluetoothDevice[];
-  connectToDevice: (device: BluetoothDevice) => Promise<void>;
-  connectedDevice: BluetoothDevice | null;
+  scanForPeripherals(): void;
+  allDevices: Device[];
+  connectToDevice: (device: Device) => Promise<void>;
+  connectedDevice: Device | null;
   disconnectFromDevice(): void;
+  sendCommand: (command: string) => Promise<void>;
 }
 
+const bleManager = new BleManager();
+
 export default function useBLE(): BluetoothApi {
-  const [allDevices, setAllDevices] = useState<BluetoothDevice[]>([]);
-  const [connectedDevice, setConnectedDevice] = useState<BluetoothDevice | null>(null);
+  const [allDevices, setAllDevices] = useState<Device[]>([]);
+  const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
 
   const requestPermission = async () => {
     if (Platform.OS === "android") {
@@ -32,23 +39,50 @@ export default function useBLE(): BluetoothApi {
     return true;
   };
 
-  const scanForPeripherals = async () => {
-    try {
-      const devices = await RNBluetoothClassic.getBondedDevices();
-      // Filter for only your FeedFlow device
-      const feedFlowDevices = devices.filter(
-        (device) => device.name === "FeedFlow"
-      );
-      setAllDevices(feedFlowDevices);
-    } catch (error) {
-      console.error("Discovery error:", error);
-    }
+  const scanForPeripherals = () => {
+    bleManager.startDeviceScan(null, null, (error, device) => {
+      if (error) {
+        console.error("Scan error:", error);
+        return;
+      }
+      if (device && device.name === "FeedFlow") {
+        setAllDevices((prevDevices) => {
+          if (!prevDevices.find((d) => d.id === device.id)) {
+            return [...prevDevices, device];
+          }
+          return prevDevices;
+        });
+      }
+    });
+
+    // Stop scanning after 10 seconds
+    setTimeout(() => {
+      bleManager.stopDeviceScan();
+    }, 10000);
   };
 
-  const connectToDevice = async (device: BluetoothDevice) => {
+  const connectToDevice = async (device: Device) => {
     try {
-      const connected = await device.connect();
-      setConnectedDevice(connected? device : null);
+      const connected = await bleManager.connectToDevice(device.id);
+      await connected.discoverAllServicesAndCharacteristics();
+      setConnectedDevice(connected);
+      bleManager.stopDeviceScan();
+
+      // Start monitoring data
+      connected.monitorCharacteristicForService(
+        SERVICE_UUID,
+        CHAR_UUID_DATA,
+        (error, characteristic) => {
+          if (error) {
+            console.error("Monitor error:", error);
+            return;
+          }
+          if (characteristic?.value) {
+            const data = Buffer.from(characteristic.value, "base64").toString();
+            console.log("Received data:", data);
+          }
+        }
+      );
     } catch (error) {
       console.error("Connection error:", error);
     }
@@ -56,8 +90,23 @@ export default function useBLE(): BluetoothApi {
 
   const disconnectFromDevice = async () => {
     if (connectedDevice) {
-      await connectedDevice.disconnect();
+      await bleManager.cancelDeviceConnection(connectedDevice.id);
       setConnectedDevice(null);
+    }
+  };
+
+  const sendCommand = async (command: string) => {
+    if (!connectedDevice) return;
+
+    try {
+      const encoded = Buffer.from(command).toString("base64");
+      await connectedDevice.writeCharacteristicWithResponseForService(
+        SERVICE_UUID,
+        CHAR_UUID_COMMAND,
+        encoded
+      );
+    } catch (error) {
+      console.error("Send command error:", error);
     }
   };
 
@@ -68,5 +117,6 @@ export default function useBLE(): BluetoothApi {
     connectToDevice,
     connectedDevice,
     disconnectFromDevice,
+    sendCommand,
   };
 }
