@@ -15,6 +15,7 @@ export default function Index() {
     connectToDevice,
     connectedDevice,
     disconnectFromDevice,
+    weight
   } = useBLE();
 
   const hideModal = () => {
@@ -40,6 +41,7 @@ export default function Index() {
     <View style={styles.base}>
       <Link href="/(tabs)" style={buttonS.outline}>Go to Some Path</Link>
       <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
+      <Text style={styles.ctaButtonText}>Weight: {weight} kg</Text>
       <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>

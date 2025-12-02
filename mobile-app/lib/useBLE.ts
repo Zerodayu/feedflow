@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
-import { BleManager, Device } from "react-native-ble-plx";
-import { decode as atob, encode as btoa } from "base-64";
+import { BleError, BleManager, Characteristic, Device } from "react-native-ble-plx";
+import { decode, encode } from "base-64";
 
 const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const CHAR_UUID_DATA = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -17,6 +17,7 @@ interface BluetoothApi {
   connectedDevice: Device | null;
   disconnectFromDevice(): void;
   sendCommand: (command: string) => Promise<void>;
+  weight: number;
 }
 
 const bleManager = new BleManager();
@@ -24,6 +25,7 @@ const bleManager = new BleManager();
 export default function useBLE(): BluetoothApi {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
+  const [weight, setWeight] = useState<number>(0);
 
   const requestPermission = async () => {
     if (Platform.OS === "android") {
@@ -32,7 +34,7 @@ export default function useBLE(): BluetoothApi {
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       ]);
-      
+
       return Object.values(permissions).every(
         (status) => status === PermissionsAndroid.RESULTS.GRANTED
       );
@@ -68,6 +70,7 @@ export default function useBLE(): BluetoothApi {
       await connected.discoverAllServicesAndCharacteristics();
       setConnectedDevice(connected);
       bleManager.stopDeviceScan();
+      startStreamingData(connected);
 
       // Start monitoring data
       connected.monitorCharacteristicForService(
@@ -79,7 +82,7 @@ export default function useBLE(): BluetoothApi {
             return;
           }
           if (characteristic?.value) {
-            const data = atob(characteristic.value);
+            const data = decode(characteristic.value);
             console.log("Received data:", data);
           }
         }
@@ -100,7 +103,7 @@ export default function useBLE(): BluetoothApi {
     if (!connectedDevice) return;
 
     try {
-      const encoded = btoa(command);
+      const encoded = encode(command);
       await connectedDevice.writeCharacteristicWithResponseForService(
         SERVICE_UUID,
         CHAR_UUID_COMMAND,
@@ -108,6 +111,42 @@ export default function useBLE(): BluetoothApi {
       );
     } catch (error) {
       console.error("Send command error:", error);
+    }
+  };
+
+  const onDataUpdate = (
+    error: BleError | null,
+    characteristic: Characteristic | null
+  ) => {
+    if (error) {
+      console.log(error);
+      return;
+    }
+    if (!characteristic?.value) {
+      console.log("No Data was received");
+      return;
+    }
+
+    const rawData = decode(characteristic.value);
+    console.log("Received data:", rawData);
+
+    // Parse the second value from comma-separated data
+    const values = rawData.split(",");
+    if (values.length >= 2) {
+      const weightValue = parseFloat(values[1]);
+      setWeight(weightValue);
+    }
+  };
+
+  const startStreamingData = async (device: Device) => {
+    if (device) {
+      device.monitorCharacteristicForService(
+        SERVICE_UUID,
+        CHAR_UUID_DATA,
+        onDataUpdate
+      );
+    } else {
+      console.error("Device not connected");
     }
   };
 
@@ -119,5 +158,6 @@ export default function useBLE(): BluetoothApi {
     connectedDevice,
     disconnectFromDevice,
     sendCommand,
+    weight,
   };
 }
