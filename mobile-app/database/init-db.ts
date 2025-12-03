@@ -19,13 +19,17 @@ export async function initializeDatabase(db: SQLiteDatabase) {
   }
 
   if (currentDbVersion === 0) {
+    // Create all tables
     await db.execAsync(schema.feed_logs);
-    console.log("database initialized done.");
-    currentDbVersion = 1;
+    await db.execAsync(schema.temp_logs);
+    await db.execAsync(schema.alert_logs);
+    console.log("Database initialized successfully");
+    await db.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
   } else {
-    console.log("DB Version:", currentDbVersion);
+    // Handle migrations for future versions
+    console.log("Running migrations from version:", currentDbVersion);
+    // Add migration logic here when needed
   }
 
-  await db.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
-  console.log("Database migrated successfully");
+  console.log("Database setup complete");
 }

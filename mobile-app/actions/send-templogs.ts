@@ -4,37 +4,20 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import type { TempLogType } from "../database/db-schema";
 import { syncDatabase } from "./sync-db";
 
-export async function sendTempLogs(db: SQLiteDatabase) {
-  const dummyLogs: Omit<TempLogType, "id">[] = [
-    {
-      temperature: 22.5,
-      date_created: new Date().toISOString(),
-    },
-    {
-      temperature: 24.3,
-      date_created: new Date().toISOString(),
-    },
-    {
-      temperature: 21.8,
-      date_created: new Date().toISOString(),
-    },
-  ];
-
+export async function sendTempLog(db: SQLiteDatabase, temperature: number) {
   try {
-    for (const log of dummyLogs) {
-      await db.runAsync(
-        `INSERT INTO temp_logs (temperature, date_created) VALUES (?, ?)`,
-        [log.temperature, log.date_created]
-      );
-    }
-    console.log("Dummy temp logs inserted successfully");
+    await db.runAsync(
+      `INSERT INTO temp_logs (temperature, date_created) VALUES (?, ?)`,
+      [temperature, new Date().toISOString()]
+    );
+    console.log("Temperature log inserted successfully:", temperature);
 
     // Sync to cloud after inserting
     await syncDatabase(db);
 
-    return { success: true, count: dummyLogs.length };
+    return { success: true };
   } catch (error) {
-    console.error("Failed to insert dummy temp logs:", error);
+    console.error("Failed to insert temperature log:", error);
     return { success: false, error };
   }
 }
@@ -44,7 +27,9 @@ export function useSendTempLogs() {
 
   const fetchTempLogs = useCallback(async () => {
     try {
-      const logs = await db.getAllAsync<TempLogType>('SELECT * FROM temp_logs ORDER BY date_created DESC');
+      const logs = await db.getAllAsync<TempLogType>(
+        'SELECT * FROM temp_logs ORDER BY date_created DESC'
+      );
       console.log('Fetched temp logs:', logs);
       return logs;
     } catch (error) {
@@ -53,28 +38,15 @@ export function useSendTempLogs() {
     }
   }, [db]);
 
-  const syncTempLogs = useCallback(async () => {
-    console.log('Syncing temp logs with Turso DB...');
-
-    try {
-      await syncDatabase(db);
-      await fetchTempLogs();
-      console.log('Synced temp logs with Turso DB');
-    } catch (e) {
-      console.log(e);
-    }
-  }, [db, fetchTempLogs]);
-
-  const handleSendLogs = async () => {
-    const result = await sendTempLogs(db);
+  const handleSendTempLog = useCallback(async (temperature: number) => {
+    const result = await sendTempLog(db, temperature);
     if (result.success) {
-      console.log(`Successfully inserted ${result.count} logs`);
-      await syncTempLogs();
+      console.log(`Successfully inserted temperature: ${temperature}`);
     } else {
-      console.error('Failed to insert logs:', result.error);
+      console.error('Failed to insert temperature log:', result.error);
     }
     return result;
-  };
+  }, [db]);
 
-  return { handleSendLogs, syncTempLogs, fetchTempLogs };
+  return { handleSendTempLog, fetchTempLogs };
 }

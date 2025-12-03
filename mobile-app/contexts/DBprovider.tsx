@@ -7,7 +7,7 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype } from '../database/db-schema';
+import type { FeedLogtype, TempLogType } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -19,14 +19,14 @@ if (
   throw new Error('Turso DB URL and Auth Token must be set in .env.local');
 }
 
-export const DB_NAME = 'feedflow-2';
+export const DB_NAME = 'feedflow-3';
 
 export const tursoOptions = {
   url: process.env.EXPO_PUBLIC_TURSO_DB_URL,
   authToken: process.env.EXPO_PUBLIC_TURSO_DB_AUTH_TOKEN,
 };
 
-const RESET_DB = false; // Set to false in production
+const RESET_DB = true; // Set to false in production
 
 async function handleDatabaseInit(db: SQLiteDatabase) {
   if (RESET_DB) {
@@ -200,6 +200,65 @@ export function useFeedLogs(): FeedLogsHook {
     updateFeedLog,
     deleteFeedLog,
     refreshFeedLogs: fetchFeedLogs,
+  };
+}
+
+// TempLogs specific hook
+interface TempLogsHook {
+  tempLogs: TempLogType[];
+  createTempLog: (temperature: number) => Promise<TempLogType | undefined>;
+  deleteTempLog: (id: number) => Promise<void>;
+  refreshTempLogs: () => Promise<void>;
+}
+
+export function useTempLogs(): TempLogsHook {
+  const { db } = useDatabase();
+  const [tempLogs, setTempLogs] = useState<TempLogType[]>([]);
+
+  const fetchTempLogs = useCallback(async () => {
+    try {
+      const logs = await db.getAllAsync<TempLogType>(
+        'SELECT * FROM temp_logs ORDER BY date_created DESC'
+      );
+      setTempLogs(logs);
+    } catch (error) {
+      console.error('Failed to fetch temp logs:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchTempLogs();
+  }, [fetchTempLogs]);
+
+  const createTempLog = useCallback(async (temperature: number) => {
+    try {
+      const date_created = new Date().toISOString();
+      const result = await db.runAsync(
+        'INSERT INTO temp_logs (temperature, date_created) VALUES (?, ?)',
+        temperature,
+        date_created
+      );
+      await fetchTempLogs();
+      return { 
+        id: result.lastInsertRowId, 
+        temperature, 
+        date_created 
+      };
+    } catch (e) {
+      console.error('Failed to create temp log:', e);
+    }
+  }, [db, fetchTempLogs]);
+
+  const deleteTempLog = useCallback(async (id: number) => {
+    await db.runAsync('DELETE FROM temp_logs WHERE id = ?', id);
+    await fetchTempLogs();
+  }, [db, fetchTempLogs]);
+
+  return {
+    tempLogs,
+    createTempLog,
+    deleteTempLog,
+    refreshTempLogs: fetchTempLogs,
   };
 }
 

@@ -1,9 +1,10 @@
 /* eslint-disable no-bitwise */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { BleError, BleManager, Characteristic, Device } from "react-native-ble-plx";
 import { decode, encode } from "base-64";
+import { useTempLogs } from "../contexts/DBprovider";
 
 const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const CHAR_UUID_DATA = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -28,6 +29,43 @@ export default function useBLE(): BluetoothApi {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [weight, setWeight] = useState<number>(0);
   const [temperature, setTemperature] = useState<number>(0);
+  const { createTempLog } = useTempLogs();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const temperatureRef = useRef<number>(0);
+
+  // Update temperature ref whenever temperature changes
+  useEffect(() => {
+    temperatureRef.current = temperature;
+  }, [temperature]);
+
+  // Save temperature every 10 seconds
+  useEffect(() => {
+    if (connectedDevice) {
+      // Clear existing interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+
+      // Set new interval
+      intervalRef.current = setInterval(async () => {
+        const currentTemp = temperatureRef.current;
+        if (currentTemp > 0) {
+          try {
+            await createTempLog(currentTemp);
+            console.log(`Temperature saved: ${currentTemp}`);
+          } catch (error) {
+            console.error("Failed to save temperature:", error);
+          }
+        }
+      }, 10000); // 10 seconds
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [connectedDevice, createTempLog]);
 
   const requestPermission = async () => {
     if (Platform.OS === "android") {
@@ -98,6 +136,12 @@ export default function useBLE(): BluetoothApi {
     if (connectedDevice) {
       await bleManager.cancelDeviceConnection(connectedDevice.id);
       setConnectedDevice(null);
+      
+      // Clear interval on disconnect
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
   };
 
