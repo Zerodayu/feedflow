@@ -19,7 +19,8 @@ export async function initializeDatabase(db: SQLiteDatabase) {
   }
 
   if (currentDbVersion === 0) {
-    await db.execAsync(schema.feeds);
+    await db.execAsync(schema.feed_logs);
+    console.log("database initialized done.");
     currentDbVersion = 1;
   } else {
     console.log("DB Version:", currentDbVersion);

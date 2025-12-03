@@ -4,9 +4,11 @@ import { buttonS } from '@/styles/buttons';
 import { mainColors } from '@/utils/global-theme';
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSendFeedLogs } from '@/actions/send-feedlogs';
+import { StyleSheet, Text, TouchableOpacity, View, Button } from 'react-native';
 
 export default function Index() {
+  const { handleSendLogs } = useSendFeedLogs();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const {
     requestPermission,
@@ -45,6 +47,7 @@ export default function Index() {
       <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
         <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
       </TouchableOpacity>
+      <Button title="Send Feed Logs" onPress={handleSendLogs} />
       <DeviceModal
         devices={allDevices}
         visible={isModalVisible}

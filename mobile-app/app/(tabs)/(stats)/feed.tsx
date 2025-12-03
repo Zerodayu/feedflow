@@ -3,15 +3,11 @@ import React from 'react'
 import { mainColors } from '@/utils/global-theme'
 import { History } from "lucide-react-native"
 import { LineChart } from "react-native-gifted-charts";
-
-const feedLogs = [
-  { id: 1, title: "Morning Feed", level: "3.45", temp: "22.5", last_updated: "2024-06-01T08:00:00Z" },
-  { id: 2, title: "Afternoon Feed", level: "4.20", temp: "23.0", last_updated: "2024-06-01T12:00:00Z" },
-  { id: 3, title: "Evening Feed", level: "3.80", temp: "21.8", last_updated: "2024-06-01T18:00:00Z" },
-
-]
+import { useFeedLogs } from '@/contexts/DBprovider'
 
 export default function Stats() {
+  const { feedLogs } = useFeedLogs();
+
   return (
     <View style={styles.base}>
       <Text style={styles.title}>Feeding Logs</Text>
@@ -26,7 +22,7 @@ export default function Stats() {
                 <View style={styles.itemDate}>
                   <History size={10} />
                   <Text style={styles.itemDateText}>
-                    {new Date(item.last_updated).toLocaleString()}
+                    {new Date(item.date_created).toLocaleString()}
                   </Text>
                 </View>
               </View>
