@@ -8,7 +8,6 @@ export default function Stats() {
   return (
     <View style={styles.base}>
       <Text style={styles.title}>Water Temperature Graph</Text>
-      <Chart />
       <View style={styles.descBox}>
         <Text style={styles.title}>Water Temperature Graph</Text>
       </View>

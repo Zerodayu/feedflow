@@ -8,6 +8,7 @@ export default function Stats() {
   return (
     <View style={styles.base}>
       <Text style={styles.title}>Water Temperature Graph</Text>
+      <Chart />
       <View style={styles.descBox}>
         <Text style={styles.title}>Water Temperature Graph</Text>
       </View>
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    padding: 14,
+    padding: 2,
     backgroundColor: mainColors.background,
   },
   title: {

@@ -3,46 +3,52 @@ import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useSegments } from 'expo-router';
 import { mainColors } from '@/utils/global-theme';
 
+type Nav = {
+  name: string;
+  label: string;
+  href: any;
+}
+
+const NavsMap: Nav[] = [
+  { name: 'index', label: 'Temp', href: '/' },
+  { name: 'temp', label: 'Feed', href: '/temp' },
+]
 
 export default function Layout() {
   const segments = useSegments();
   const activeTab = segments[segments.length - 1];
 
   return (
-    <Tabs style={{ flex: 1, height: '20%' }}>
+    <Tabs style={{ flex: 1, height: '20%', paddingHorizontal: 10, backgroundColor: mainColors.background }}>
       <TabList style={{
         flexDirection: 'row',
         justifyContent: 'space-around',
         backgroundColor: mainColors.accent,
+        borderRadius: mainColors.md,
+        padding: 6,
       }}>
-        <TabTrigger name="home" href="/" asChild>
-          <TouchableOpacity style={{
-            borderBottomWidth: activeTab === '(stats)' ? 2 : 0,
-            borderBottomColor: activeTab === '(stats)' ? mainColors.primary : mainColors.background,
-            width: "50%",
-            paddingVertical: 10,
-            alignContent: 'center',
-            justifyContent: 'center'
-          }}>
-            <Text style={{
-              fontWeight: activeTab === '(stats)' ? "bold" : "normal"
-            }}>Home</Text>
-          </TouchableOpacity>
-        </TabTrigger>
-        <TabTrigger name="temp" href="/temp" asChild>
-          <TouchableOpacity style={{
-            borderBottomWidth: activeTab === 'temp' ? 2 : 0,
-            borderBottomColor: activeTab === 'temp' ? mainColors.primary : mainColors.background,
-            width: "50%",
-            paddingVertical: 10,
-            alignContent: 'center',
-            justifyContent: 'center'
-          }}>
-            <Text style={{
-              fontWeight: activeTab === 'temp' ? "bold" : "normal"
-            }}>Temp</Text>
-          </TouchableOpacity>
-        </TabTrigger>
+        {NavsMap.map((nav) => (
+          <TabTrigger key={nav.name} name={nav.name} href={nav.href} asChild>
+            <TouchableOpacity style={{
+              backgroundColor: activeTab === nav.name || (nav.name === 'index' && activeTab === '(stats)')
+                ? mainColors.primary + 50
+                : mainColors.accent,
+              width: "50%",
+              paddingVertical: 10,
+              alignContent: 'center',
+              justifyContent: 'center',
+              borderRadius: mainColors.sm
+            }}>
+              <Text style={{
+                fontWeight: activeTab === nav.name || (nav.name === 'index' && activeTab === '(stats)')
+                  ? "bold"
+                  : "normal"
+              }}>
+                {nav.label}
+              </Text>
+            </TouchableOpacity>
+          </TabTrigger>
+        ))}
       </TabList>
       <TabSlot />
     </Tabs>

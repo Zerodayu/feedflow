@@ -6,6 +6,8 @@ import { useBLEContext } from "@/contexts/BLEprovider";
 import {
   ChartPie,
   Home,
+  Bolt,
+  NotebookPen
 } from "lucide-react-native";
 
 
@@ -23,12 +25,12 @@ export default function RootLayout() {
             backgroundColor: mainColors.background,
           },
           tabBarStyle: {
-            backgroundColor: mainColors.background,
-            borderTopColor: mainColors.accent,
+            backgroundColor: mainColors.accent,
+            borderTopColor: mainColors.primary,
             paddingTop: 5,
           },
           tabBarActiveTintColor: mainColors.primary,
-          tabBarInactiveTintColor: mainColors.accent,
+          tabBarInactiveTintColor: mainColors.foreground+50,
         }}
       >
         <Tabs.Screen
@@ -43,6 +45,21 @@ export default function RootLayout() {
           options={{
             title: "Stats",
             tabBarIcon: ({ color, size }) => <ChartPie color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="notes"
+          options={{
+            title: "Notes",
+            tabBarIcon: ({ color, size }) => <NotebookPen color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="about"
+          options={{
+            title: "About",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => <Bolt color={color} size={size} />,
           }}
         />
       </Tabs>
@@ -74,6 +91,7 @@ const styles = StyleSheet.create({
     minWidth: "100%",
     backgroundColor: mainColors.primary,
     padding: 10,
+    marginBottom: 10,
   },
   title: {
     fontSize: 16,
