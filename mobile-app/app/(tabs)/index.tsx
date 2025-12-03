@@ -6,6 +6,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 import SetBiomassModal from "@/components/setBiomassModal";
 import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
+import { calculateFeedAmount } from "@/actions/send-templogs";
 
 
 export default function Home() {
@@ -13,7 +14,6 @@ export default function Home() {
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
   const { latestFishCount, refreshFishCounts } = useFishCount();
   const [showBiomassModal, setShowBiomassModal] = useState(false);
-  const DispenseFeedText = 0;
   const MAX_WEIGHT = 100; // Maximum weight capacity in kg
 
   const handleModalClose = async () => {
@@ -37,6 +37,15 @@ export default function Home() {
     }
     return 'N/A';
   };
+
+  // Calculate automatic feed amount
+  const getAutoFeedAmount = () => {
+    const biomass = calculateBiomass();
+    if (biomass === 'N/A') return 'N/A';
+    return calculateFeedAmount(parseFloat(biomass), temperature);
+  };
+
+  const autoFeedAmount = getAutoFeedAmount();
 
   // Calculate weight percentage
   const weightPercentage = ((weight / MAX_WEIGHT) * 100).toFixed(1);
@@ -95,13 +104,17 @@ export default function Home() {
       <View style={styles.dispenseFeedBox}>
         <Text style={styles.title}>Dispense Feed</Text>
         <View style={styles.box}>
-          <TouchableOpacity style={buttonS.primary}>
-            <Feather name="plus" size={24} color={mainColors.foreground} />
-          </TouchableOpacity>
-          <Text style={styles.textValue2}>{DispenseFeedText} kg</Text>
-          <TouchableOpacity style={buttonS.primary}>
-            <Feather name="minus" size={24} color={mainColors.foreground} />
-          </TouchableOpacity>
+          <View style={styles.feedInfoContainer}>
+            <Text style={styles.feedLabel}>Daily Feed Rate:</Text>
+            <Text style={styles.textValue2}>
+              {autoFeedAmount === 'N/A' ? 'N/A' : `${autoFeedAmount} kg/day`}
+            </Text>
+            {autoFeedAmount !== 'N/A' && (
+              <Text style={styles.feedSubtext}>
+                Based on {calculateBiomass()} kg biomass at {temperature}°C
+              </Text>
+            )}
+          </View>
         </View>
         <TouchableOpacity style={buttonS.primary}>
           <Feather name="check" size={24} color={mainColors.foreground} />
@@ -201,5 +214,16 @@ const styles = StyleSheet.create({
   text1: {
     textAlign: "left",
     color: mainColors.foreground,
+  },
+  feedInfoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedLabel: {
+    color: mainColors.foreground,
+  },
+  feedSubtext: {
+    color: mainColors.foreground,
+    fontSize: 12,
   }
 })

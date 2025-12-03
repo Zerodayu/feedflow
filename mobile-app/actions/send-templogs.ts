@@ -7,6 +7,7 @@ import { syncDatabase } from "./sync-db";
 const ALERT_COOLDOWN_MS = 60000; // 1 minute cooldown
 let lastAlertTime = 0;
 
+
 async function createTempAlert(db: SQLiteDatabase, temperature: number) {
   const now = Date.now();
 
@@ -83,4 +84,26 @@ export function useSendTempLogs() {
   }, [db]);
 
   return { handleSendTempLog, fetchTempLogs };
+}
+
+export function calculateFeedAmount(biomass: number, temperature: number): number {
+  // Feed calculation based on temperature
+  // Typical feeding rate: 2-5% of biomass per day
+  // Adjust based on temperature (optimal range 28-30°C)
+  
+  let feedingRate = 0;
+  
+  if (temperature < 26) {
+    feedingRate = 0.02; // 2% - cold, fish eat less
+  } else if (temperature >= 26 && temperature < 28) {
+    feedingRate = 0.03; // 3%
+  } else if (temperature >= 28 && temperature <= 30) {
+    feedingRate = 0.04; // 4% - optimal range
+  } else if (temperature > 30 && temperature < 32) {
+    feedingRate = 0.03; // 3% - getting warm
+  } else {
+    feedingRate = 0.02; // 2% - too hot, fish stressed
+  }
+  
+  return parseFloat((biomass * feedingRate).toFixed(2));
 }
