@@ -11,7 +11,7 @@ type Nav = {
 
 const NavsMap: Nav[] = [
   { name: 'index', label: 'Temp', href: '/' },
-  { name: 'temp', label: 'Feed', href: '/temp' },
+  { name: 'feed', label: 'Feed', href: '/feed' },
 ]
 
 export default function Layout() {

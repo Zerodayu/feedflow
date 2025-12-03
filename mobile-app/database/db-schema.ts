@@ -1,3 +1,10 @@
+export type Feedtype ={
+  id: number;
+  title: string;
+  url: string;
+  last_updated: string;
+}
+
 export const DB_VERSION = 1;
 
 export const schema = {

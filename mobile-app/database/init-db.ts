@@ -14,7 +14,7 @@ export async function initializeDatabase(db: SQLiteDatabase) {
   let currentDbVersion = result?.user_version ?? 0;
 
   if (currentDbVersion >= DB_VERSION) {
-    console.log("Database is up to date.", currentDbVersion);
+    console.log("Database is up to date. VERSION: ", currentDbVersion);
     return;
   }
 
