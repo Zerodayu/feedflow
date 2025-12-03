@@ -55,17 +55,37 @@ export default function Stats() {
 }
 
 function Chart({ tempLogs }: { tempLogs: TempLogType[] }) {
-  // Convert temp logs to chart data format (reversed to show oldest to newest)
-  const data = tempLogs
+  // Filter data to show only readings that are at least 1 minute apart
+  const filteredData = tempLogs
     .slice()
-    .reverse()
-    .map((log) => ({
-      value: log.temperature,
-      label: new Date(log.date_created).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-    }));
+    .reverse() // Oldest to newest
+    .reduce((acc: TempLogType[], log) => {
+      if (acc.length === 0) {
+        // Always include the first reading
+        acc.push(log);
+      } else {
+        const lastLog = acc[acc.length - 1];
+        const lastDate = new Date(lastLog.date_created).getTime();
+        const currentDate = new Date(log.date_created).getTime();
+        const timeDiff = currentDate - lastDate;
+        
+        // Only include if at least 60 seconds (1 minute) has passed
+        if (timeDiff >= 60000) {
+          acc.push(log);
+        }
+      }
+      return acc;
+    }, []);
+
+  // Convert filtered logs to chart data format
+  const data = filteredData.map((log) => ({
+    value: log.temperature,
+    label: new Date(log.date_created).toLocaleTimeString('en-US', { 
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }),
+  }));
 
   // Show message if no data
   if (data.length === 0) {
@@ -90,6 +110,8 @@ function Chart({ tempLogs }: { tempLogs: TempLogType[] }) {
       width={320}
       initialSpacing={10}
       endSpacing={10}
+      spacing={data.length > 10 ? 40 : 60}
+      hideDataPoints={data.length > 15}
     />
   );
 }
