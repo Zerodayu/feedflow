@@ -7,7 +7,8 @@ import {
   ChartPie,
   Home,
   Bolt,
-  NotebookPen
+  NotebookPen,
+  TriangleAlert
 } from "lucide-react-native";
 
 
@@ -52,6 +53,13 @@ export default function RootLayout() {
           options={{
             title: "Notes",
             tabBarIcon: ({ color, size }) => <NotebookPen color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="alerts"
+          options={{
+            title: "Alerts",
+            tabBarIcon: ({ color, size }) => <TriangleAlert color={color} size={size} />,
           }}
         />
         <Tabs.Screen
