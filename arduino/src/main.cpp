@@ -38,7 +38,6 @@ const float FAST_ALPHA = 0.90f;
 const float SLOW_ALPHA = 0.40f;
 const float JUMP_THRESHOLD_KG = 0.02f;
 const float DETECT_THRESHOLD_KG = 0.02f;
-const float TEMP_SAFE_LIMIT = 33.0f;
 const unsigned long TEMP_INTERVAL_MS = 2000UL;
 
 // ------------------- SERVO TIMING -----------------
@@ -230,21 +229,6 @@ void loop()
     pCharData->notify();
 
     lastTempTime = now;
-  }
-
-  // ----- TEMPERATURE SAFETY -----
-  // Move this check AFTER reading temperature
-  if (lastTemp >= TEMP_SAFE_LIMIT && lastTemp > 0)
-  {
-    feedRequestActive = false;
-    servoAngle = feedCloseAngle;
-    writeServo360(servoAngle);
-    if (deviceConnected) {
-      pCharData->setValue("TEMP_TOO_HIGH");
-      pCharData->notify();
-    }
-    Serial.println("TEMP TOO HIGH — SERVO STOPPED!");
-    return;
   }
 
   // ----- FEEDING LOGIC -----
