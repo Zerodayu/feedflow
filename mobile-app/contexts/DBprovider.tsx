@@ -7,7 +7,7 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype, TempLogType, ave_weight, total_fish } from '../database/db-schema';
+import type { FeedLogtype, TempLogType, ave_weight, total_fish, AlertLogType } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -385,6 +385,95 @@ export function useFishCount(): FishCountHook {
     createFishCount,
     deleteFishCount,
     refreshFishCounts: fetchFishCounts,
+  };
+}
+
+// AlertLogs specific hook
+interface AlertLogsHook {
+  alertLogs: AlertLogType[];
+  createAlert: (temperature: number, weight: number) => Promise<AlertLogType | undefined>;
+  deleteAlert: (id: number) => Promise<void>;
+  refreshAlerts: () => Promise<void>;
+}
+
+export function useAlertLogs(): AlertLogsHook {
+  const { db } = useDatabase();
+  const [alertLogs, setAlertLogs] = useState<AlertLogType[]>([]);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const alerts = await db.getAllAsync<AlertLogType>(
+        'SELECT * FROM alert_logs ORDER BY date_created DESC'
+      );
+      setAlertLogs(alerts);
+    } catch (error) {
+      console.error('Failed to fetch alerts:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
+
+  const createAlert = useCallback(
+    async (temperature: number, weight: number) => {
+      try {
+        const highTemp = temperature >= 32;
+        const lowFeed = weight <= 10;
+
+        if (!highTemp && !lowFeed) {
+          return undefined;
+        }
+
+        const subject =
+          highTemp && !lowFeed
+            ? "High Temperature"
+            : !highTemp && lowFeed
+            ? "Low Feed Level"
+            : "High Temperature & Low Feed Level";
+
+        const body =
+          highTemp && !lowFeed
+            ? `Temperature has reached ${temperature}°C. Please check the system immediately.`
+            : !highTemp && lowFeed
+            ? `Feed level is critically low at ${weight}kg. Please refill soon.`
+            : `CRITICAL: Temperature at ${temperature}°C and feed level at ${weight}kg. Immediate action required.`;
+
+        const date_created = new Date().toISOString();
+
+        const result = await db.runAsync(
+          'INSERT INTO alert_logs (subject, body, date_created) VALUES (?, ?, ?)',
+          subject,
+          body,
+          date_created
+        );
+        await fetchAlerts();
+        return {
+          id: result.lastInsertRowId,
+          subject,
+          body,
+          date_created,
+        };
+      } catch (e) {
+        console.error('Failed to create alert:', e);
+      }
+    },
+    [db, fetchAlerts]
+  );
+
+  const deleteAlert = useCallback(
+    async (id: number) => {
+      await db.runAsync('DELETE FROM alert_logs WHERE id = ?', id);
+      await fetchAlerts();
+    },
+    [db, fetchAlerts]
+  );
+
+  return {
+    alertLogs,
+    createAlert,
+    deleteAlert,
+    refreshAlerts: fetchAlerts,
   };
 }
 
