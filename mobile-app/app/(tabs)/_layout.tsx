@@ -39,7 +39,7 @@ export default function RootLayout() {
           }}
         />
         <Tabs.Screen
-          name="stats"
+          name="(stats)"
           options={{
             title: "Stats",
             tabBarIcon: ({ color, size }) => <ChartPie color={color} size={size} />,
