@@ -3,11 +3,29 @@ import { mainColors } from "@/utils/global-theme";
 import Feather from '@expo/vector-icons/Feather';
 import { useBLEContext } from "@/contexts/BLEprovider";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import SetBiomassModal from "@/components/setBiomassModal";
+import { useAveWeight } from "@/contexts/DBprovider";
 
 
 export default function Home() {
   const { connectedDevice, weight, temperature } = useBLEContext();
+  const { latestAveWeight, refreshAveWeights } = useAveWeight();
+  const [showBiomassModal, setShowBiomassModal] = useState(false);
   const DispenseFeedText = 0;
+
+  const handleModalClose = async () => {
+    setShowBiomassModal(false);
+    await refreshAveWeights();
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
     <View style={styles.base}>
@@ -26,6 +44,33 @@ export default function Home() {
           <Text style={styles.text}>Refil Soon</Text>
         </View>
       </View>
+      <View style={styles.box1}>
+        <View style={styles.container1}>
+          <Text style={styles.text1}>ABW</Text>
+          {/* <Thermometer /> */}
+          <Text style={styles.textValue}>
+            {latestAveWeight?.weight ? `${latestAveWeight.weight} kg` : 'N/A'}
+          </Text>
+          <Text style={styles.text}>
+            {latestAveWeight?.date ? formatDate(latestAveWeight.date) : '-'}
+          </Text>
+        </View>
+        <View style={styles.container1}>
+          <Text style={styles.text}>No. of Fish</Text>
+          <Text style={styles.textValue}>{weight}</Text>
+        </View>
+        <View style={styles.container1}>
+          <Text style={styles.text}>Biomass</Text>
+          <Text style={styles.textValue}>{weight}</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={buttonS.secondary}
+        onPress={() => setShowBiomassModal(true)}
+      >
+        <Text style={styles.textValue2}>Set Biomass</Text>
+      </TouchableOpacity>
 
       {/* Dispense Feed */}
       <View style={styles.dispenseFeedBox}>
@@ -44,6 +89,11 @@ export default function Home() {
           <Text style={styles.textValue2}>Feed Now</Text>
         </TouchableOpacity>
       </View>
+
+      <SetBiomassModal
+        visible={showBiomassModal}
+        closeModal={handleModalClose}
+      />
     </View>
   );
 }
@@ -69,13 +119,32 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
   },
+  box1: {
+    flexDirection: "row",
+    alignContent: "center",
+    justifyContent: "center",
+    minWidth: "100%",
+    padding: 10,
+    gap: 6,
+  },
   container: {
     flex: 1,
     justifyContent: "center",
-    padding: 4,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: mainColors.accent,
+    borderRadius: mainColors.sm,
+    gap: 2,
+  },
+  container1: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
     gap: 2,
   },
   dispenseFeedBox: {
+    flex: 1,
     padding: 10,
     minWidth: "100%",
     marginTop: 20,
@@ -108,6 +177,10 @@ const styles = StyleSheet.create({
     color: mainColors.foreground,
   },
   text: {
+    color: mainColors.foreground,
+  },
+  text1: {
+    textAlign: "left",
     color: mainColors.foreground,
   }
 })

@@ -40,27 +40,19 @@ const float JUMP_THRESHOLD_KG = 0.02f;
 const float DETECT_THRESHOLD_KG = 0.02f;
 const unsigned long TEMP_INTERVAL_MS = 2000UL;
 
-// ------------------- SERVO TIMING -----------------
-int servoAngle = 0;
-int servoDir = 1;
-unsigned long lastServoStep = 0;
-unsigned long servoStepInterval = 20;
-int idleServoStep = 5;
+// ------------------- SERVO POSITIONS -----------------
+int feedOpenAngle = 130;   // Servo runs (dispenses)
+int feedCloseAngle = 30;   // Servo stops
+int servoAngle = 30;
 
 // ------------------- FEEDING PARAMETERS -----------------
 bool feedRequestActive = false;
+bool manualServoControl = false;  // Add this line
 float targetKg = 0.0f;
 float startWeight = 0.0f;
 unsigned long feedStartTime = 0;
 const unsigned long FEED_MAX_DURATION_MS = 30000UL;
 const float FEED_MAX_KG = 5.0f;
-
-int feedOpenAngle = 130;
-int feedCloseAngle = 30;
-int feedServoDir = 1;
-int feedServoStep = 8;
-unsigned long feedServoInterval = 60;
-unsigned long lastFeedServoTime = 0;
 
 // ------------------- VARIABLES --------------------
 float filteredKg = 0.0f;
@@ -68,12 +60,10 @@ float rawBuf = 0.0f;
 unsigned long lastTempTime = 0;
 float lastTemp = 0.0f;
 
-// Helper to write a 0..360 "angle" to the servo by mapping to microsecond pulses.
-// This lets you address the servo as if it had a 360° range.
+// Helper to write a 0..360 "angle" to the servo
 void writeServo360(int angle)
 {
   angle = constrain(angle, 0, 360);
-  // Map 0..360 to pulse range used in attach(servoPin, 500, 2400)
   int pulse = map(angle, 0, 360, 500, 2400);
   myservo.writeMicroseconds(pulse);
 }
@@ -91,7 +81,7 @@ class MyServerCallbacks : public BLEServerCallbacks
   {
     deviceConnected = false;
     Serial.println("BLE Client Disconnected");
-    pServer->startAdvertising(); // restart advertising
+    pServer->startAdvertising();
   }
 };
 
@@ -116,9 +106,24 @@ class CommandCallbacks : public BLECharacteristicCallbacks
           startWeight = filteredKg;
           feedRequestActive = true;
           feedStartTime = millis();
+          servoAngle = feedOpenAngle;  // Open servo to start dispensing
+          writeServo360(servoAngle);
           pCharData->setValue("FEEDING_STARTED");
           pCharData->notify();
+          Serial.println("Servo OPEN - Dispensing...");
         }
+      }
+      else if (cmd == "SERVO_OPEN")
+      {
+        servoAngle = feedOpenAngle;
+        writeServo360(servoAngle);
+        Serial.println("Manual: Servo OPEN");
+      }
+      else if (cmd == "SERVO_CLOSE")
+      {
+        servoAngle = feedCloseAngle;
+        writeServo360(servoAngle);
+        Serial.println("Manual: Servo CLOSE");
       }
     }
   }
@@ -147,17 +152,14 @@ void setup()
 
   // ---------- TEMPERATURE ----------
   sensors.begin();
-  // Add diagnostic info
   Serial.print("Found ");
   Serial.print(sensors.getDeviceCount());
   Serial.println(" DS18B20 devices");
 
   // ---------- SERVO ----------
   myservo.attach(servoPin, 500, 2400);
-  servoAngle = feedCloseAngle;
+  servoAngle = feedCloseAngle;  // Start in closed position
   writeServo360(servoAngle);
-  lastServoStep = millis();
-  lastFeedServoTime = millis();
   lastTempTime = millis();
 
   // ---------- BLE ----------
@@ -167,13 +169,11 @@ void setup()
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  // Data characteristic (for sending sensor data)
   pCharData = pService->createCharacteristic(
       CHAR_UUID_DATA,
       BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   pCharData->addDescriptor(new BLE2902());
 
-  // Command characteristic (for receiving commands)
   pCharCommand = pService->createCharacteristic(
       CHAR_UUID_COMMAND,
       BLECharacteristic::PROPERTY_WRITE);
@@ -186,11 +186,89 @@ void setup()
   pAdvertising->start();
 
   Serial.println("BLE started. Device name: FeedFlow");
+  Serial.println("Ready. Servo in CLOSED position.");
 }
 
 void loop()
 {
   unsigned long now = millis();
+
+  // ----- CHECK SERIAL COMMANDS -----
+  if (Serial.available() > 0)
+  {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    Serial.print("Serial RX: ");
+    Serial.println(cmd);
+
+    if (cmd.startsWith("FEED_NOW:"))
+    {
+      float req = cmd.substring(9).toFloat();
+      if (req > 0.0f && req <= FEED_MAX_KG)
+      {
+        manualServoControl = false;  // Exit manual mode
+        targetKg = req;
+        startWeight = filteredKg;
+        feedRequestActive = true;
+        feedStartTime = millis();
+        servoAngle = feedOpenAngle;
+        writeServo360(servoAngle);
+        Serial.println("FEEDING_STARTED - Servo OPEN");
+      }
+      else
+      {
+        Serial.println("Invalid feed amount. Use 0.1 to 5.0 kg");
+      }
+    }
+    else if (cmd == "SERVO_OPEN")
+    {
+      manualServoControl = true;  // Enter manual mode
+      feedRequestActive = false;  // Stop auto feeding
+      servoAngle = feedOpenAngle;
+      writeServo360(servoAngle);
+      Serial.println("Manual: Servo OPEN");
+    }
+    else if (cmd == "SERVO_CLOSE")
+    {
+      manualServoControl = false;  // Exit manual mode
+      feedRequestActive = false;   // Stop auto feeding
+      servoAngle = feedCloseAngle;
+      writeServo360(servoAngle);
+      Serial.println("Manual: Servo CLOSE");
+    }
+    else if (cmd == "STATUS")
+    {
+      Serial.println("=== STATUS ===");
+      Serial.print("Weight: ");
+      Serial.print(filteredKg, 3);
+      Serial.println(" kg");
+      Serial.print("Temperature: ");
+      Serial.print(lastTemp, 2);
+      Serial.println(" C");
+      Serial.print("Servo Angle: ");
+      Serial.println(servoAngle);
+      Serial.print("Manual Control: ");
+      Serial.println(manualServoControl ? "YES" : "NO");
+      Serial.print("Feeding Active: ");
+      Serial.println(feedRequestActive ? "YES" : "NO");
+      if (feedRequestActive)
+      {
+        Serial.print("Target: ");
+        Serial.print(targetKg, 3);
+        Serial.print(" kg | Dispensed: ");
+        Serial.println((filteredKg - startWeight), 3);
+      }
+      Serial.println("==============");
+    }
+    else
+    {
+      Serial.println("Unknown command. Available commands:");
+      Serial.println("  SERVO_OPEN - Open servo");
+      Serial.println("  SERVO_CLOSE - Close servo");
+      Serial.println("  FEED_NOW:X - Dispense X kg (e.g., FEED_NOW:0.5)");
+      Serial.println("  STATUS - Show current status");
+    }
+  }
 
   // ----- UPDATE LOAD CELL -----
   if (LoadCell.update())
@@ -207,11 +285,10 @@ void loop()
     sensors.requestTemperatures();
     float tempC = sensors.getTempCByIndex(0);
     
-    // Add validation - DS18B20 returns -127 on error
     if (tempC == -127.0f || isnan(tempC))
     {
       Serial.println("ERROR: Temperature sensor not responding!");
-      tempC = 0.0f; // or use lastTemp if you want to keep previous value
+      tempC = 0.0f;
     }
     
     lastTemp = tempC;
@@ -234,50 +311,44 @@ void loop()
   // ----- FEEDING LOGIC -----
   if (feedRequestActive)
   {
-    // safety timeout
+    // Safety timeout
     if (now - feedStartTime > FEED_MAX_DURATION_MS)
     {
       feedRequestActive = false;
+      servoAngle = feedCloseAngle;
+      writeServo360(servoAngle);
       if (deviceConnected) {
         pCharData->setValue("FEED_TIMEOUT");
         pCharData->notify();
       }
-      servoAngle = feedCloseAngle;
-      writeServo360(servoAngle);
+      Serial.println("Feed timeout - Servo CLOSED");
     }
     else
     {
       float dispensed = filteredKg - startWeight;
-      if (dispensed < 0)
-        dispensed = 0;
+      if (dispensed < 0) dispensed = 0;
 
       if (dispensed >= targetKg)
       {
         feedRequestActive = false;
+        servoAngle = feedCloseAngle;
+        writeServo360(servoAngle);
         if (deviceConnected) {
           pCharData->setValue("FEEDING_DONE");
           pCharData->notify();
         }
-        servoAngle = feedCloseAngle;
-        writeServo360(servoAngle);
+        Serial.print("Target reached (");
+        Serial.print(dispensed, 3);
+        Serial.println(" kg) - Servo CLOSED");
       }
-      else if (now - lastFeedServoTime >= feedServoInterval)
-      {
-        // dispense feed
-        servoAngle += feedServoDir * feedServoStep;
-        if (servoAngle >= feedOpenAngle)
-          feedServoDir = -1;
-        if (servoAngle <= feedCloseAngle)
-          feedServoDir = 1;
-        writeServo360(servoAngle);
-        lastFeedServoTime = now;
-      }
+      // Servo stays OPEN while feeding
     }
   }
-  else
+  
+  // ----- MANUAL SERVO MODE -----
+  // Keep servo in position if in manual mode and not feeding
+  if (manualServoControl && !feedRequestActive)
   {
-    // ----- REST POSITION -----
-    servoAngle = feedCloseAngle;
-    writeServo360(servoAngle);
+    writeServo360(servoAngle);  // Maintain servo position
   }
 }

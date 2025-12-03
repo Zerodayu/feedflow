@@ -7,7 +7,7 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype, TempLogType } from '../database/db-schema';
+import type { FeedLogtype, TempLogType, ave_weight } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -26,7 +26,7 @@ export const tursoOptions = {
   authToken: process.env.EXPO_PUBLIC_TURSO_DB_AUTH_TOKEN,
 };
 
-const RESET_DB = true; // Set to false in production
+const RESET_DB = false; // Set to false in production
 
 async function handleDatabaseInit(db: SQLiteDatabase) {
   if (RESET_DB) {
@@ -259,6 +259,69 @@ export function useTempLogs(): TempLogsHook {
     createTempLog,
     deleteTempLog,
     refreshTempLogs: fetchTempLogs,
+  };
+}
+
+// AveWeight specific hook
+interface AveWeightHook {
+  aveWeights: ave_weight[];
+  latestAveWeight: ave_weight | null;
+  createAveWeight: (weight: number) => Promise<ave_weight | undefined>;
+  deleteAveWeight: (id: number) => Promise<void>;
+  refreshAveWeights: () => Promise<void>;
+}
+
+export function useAveWeight(): AveWeightHook {
+  const { db } = useDatabase();
+  const [aveWeights, setAveWeights] = useState<ave_weight[]>([]);
+  const [latestAveWeight, setLatestAveWeight] = useState<ave_weight | null>(null);
+
+  const fetchAveWeights = useCallback(async () => {
+    try {
+      const weights = await db.getAllAsync<ave_weight>(
+        'SELECT * FROM ave_weight ORDER BY date DESC'
+      );
+      setAveWeights(weights);
+      setLatestAveWeight(weights[0] || null);
+    } catch (error) {
+      console.error('Failed to fetch average weights:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchAveWeights();
+  }, [fetchAveWeights]);
+
+  const createAveWeight = useCallback(async (weight: number) => {
+    try {
+      const date = new Date().toISOString();
+      const result = await db.runAsync(
+        'INSERT INTO ave_weight (weight, date) VALUES (?, ?)',
+        weight,
+        date
+      );
+      await fetchAveWeights();
+      return { 
+        id: result.lastInsertRowId, 
+        weight, 
+        date 
+      };
+    } catch (e) {
+      console.error('Failed to create average weight:', e);
+    }
+  }, [db, fetchAveWeights]);
+
+  const deleteAveWeight = useCallback(async (id: number) => {
+    await db.runAsync('DELETE FROM ave_weight WHERE id = ?', id);
+    await fetchAveWeights();
+  }, [db, fetchAveWeights]);
+
+  return {
+    aveWeights,
+    latestAveWeight,
+    createAveWeight,
+    deleteAveWeight,
+    refreshAveWeights: fetchAveWeights,
   };
 }
 
