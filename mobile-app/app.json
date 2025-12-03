@@ -45,6 +45,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-sqlite",
+        {
+          "useLibSQL": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
