@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSendAveWeight } from "@/actions/send-abw";
+import { useSendFishCount } from "@/actions/send-fishcount";
 import Feather from '@expo/vector-icons/Feather';
 
 type SetBiomassModalProps = {
@@ -20,28 +21,39 @@ type SetBiomassModalProps = {
 const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
   const { visible, closeModal } = props;
   const { handleSendAveWeight } = useSendAveWeight();
+  const { handleSendFishCount } = useSendFishCount();
   const [weight, setWeight] = useState("");
+  const [fishCount, setFishCount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     const weightValue = parseFloat(weight);
+    const fishCountValue = parseInt(fishCount, 10);
     
     if (isNaN(weightValue) || weightValue <= 0) {
       alert("Please enter a valid weight");
       return;
     }
 
+    if (isNaN(fishCountValue) || fishCountValue <= 0) {
+      alert("Please enter a valid fish count");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const result = await handleSendAveWeight(weightValue);
-      if (result.success) {
+      const weightResult = await handleSendAveWeight(weightValue);
+      const fishCountResult = await handleSendFishCount(fishCountValue);
+      
+      if (weightResult.success && fishCountResult.success) {
         setWeight("");
+        setFishCount("");
         closeModal();
       } else {
-        alert("Failed to save average weight");
+        alert("Failed to save data");
       }
     } catch (error) {
-      console.error("Error saving average weight:", error);
+      console.error("Error saving data:", error);
       alert("An error occurred");
     } finally {
       setIsSubmitting(false);
@@ -50,6 +62,7 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
 
   const handleClose = () => {
     setWeight("");
+    setFishCount("");
     closeModal();
   };
 
@@ -63,7 +76,7 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
       <View style={modalStyle.modalOverlay}>
         <SafeAreaView style={modalStyle.modalContainer}>
           <View style={modalStyle.modalContent}>
-            <Text style={modalStyle.modalTitle}>Set Average Weight</Text>
+            <Text style={modalStyle.modalTitle}>Set Biomass Data</Text>
             
             <View style={modalStyle.inputContainer}>
               <Text style={modalStyle.label}>Average Weight (kg)</Text>
@@ -74,6 +87,19 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
                 keyboardType="decimal-pad"
                 value={weight}
                 onChangeText={setWeight}
+                editable={!isSubmitting}
+              />
+            </View>
+
+            <View style={modalStyle.inputContainer}>
+              <Text style={modalStyle.label}>Total Fish Count</Text>
+              <TextInput
+                style={modalStyle.input}
+                placeholder="Enter fish count"
+                placeholderTextColor={mainColors.foreground+50}
+                keyboardType="number-pad"
+                value={fishCount}
+                onChangeText={setFishCount}
                 editable={!isSubmitting}
               />
             </View>

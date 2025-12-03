@@ -7,7 +7,7 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype, TempLogType, ave_weight } from '../database/db-schema';
+import type { FeedLogtype, TempLogType, ave_weight, total_fish } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -322,6 +322,69 @@ export function useAveWeight(): AveWeightHook {
     createAveWeight,
     deleteAveWeight,
     refreshAveWeights: fetchAveWeights,
+  };
+}
+
+// FishCount specific hook
+interface FishCountHook {
+  fishCounts: total_fish[];
+  latestFishCount: total_fish | null;
+  createFishCount: (count: number) => Promise<total_fish | undefined>;
+  deleteFishCount: (id: number) => Promise<void>;
+  refreshFishCounts: () => Promise<void>;
+}
+
+export function useFishCount(): FishCountHook {
+  const { db } = useDatabase();
+  const [fishCounts, setFishCounts] = useState<total_fish[]>([]);
+  const [latestFishCount, setLatestFishCount] = useState<total_fish | null>(null);
+
+  const fetchFishCounts = useCallback(async () => {
+    try {
+      const counts = await db.getAllAsync<total_fish>(
+        'SELECT * FROM total_fish ORDER BY date DESC'
+      );
+      setFishCounts(counts);
+      setLatestFishCount(counts[0] || null);
+    } catch (error) {
+      console.error('Failed to fetch fish counts:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchFishCounts();
+  }, [fetchFishCounts]);
+
+  const createFishCount = useCallback(async (count: number) => {
+    try {
+      const date = new Date().toISOString();
+      const result = await db.runAsync(
+        'INSERT INTO total_fish (count, date) VALUES (?, ?)',
+        count,
+        date
+      );
+      await fetchFishCounts();
+      return { 
+        id: result.lastInsertRowId, 
+        count, 
+        date 
+      };
+    } catch (e) {
+      console.error('Failed to create fish count:', e);
+    }
+  }, [db, fetchFishCounts]);
+
+  const deleteFishCount = useCallback(async (id: number) => {
+    await db.runAsync('DELETE FROM total_fish WHERE id = ?', id);
+    await fetchFishCounts();
+  }, [db, fetchFishCounts]);
+
+  return {
+    fishCounts,
+    latestFishCount,
+    createFishCount,
+    deleteFishCount,
+    refreshFishCounts: fetchFishCounts,
   };
 }
 

@@ -5,18 +5,21 @@ import { useBLEContext } from "@/contexts/BLEprovider";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 import SetBiomassModal from "@/components/setBiomassModal";
-import { useAveWeight } from "@/contexts/DBprovider";
+import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
 
 
 export default function Home() {
   const { connectedDevice, weight, temperature } = useBLEContext();
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
+  const { latestFishCount, refreshFishCounts } = useFishCount();
   const [showBiomassModal, setShowBiomassModal] = useState(false);
   const DispenseFeedText = 0;
+  const MAX_WEIGHT = 100; // Maximum weight capacity in kg
 
   const handleModalClose = async () => {
     setShowBiomassModal(false);
     await refreshAveWeights();
+    await refreshFishCounts();
   };
 
   const formatDate = (dateString: string) => {
@@ -26,6 +29,17 @@ export default function Home() {
       day: 'numeric'
     });
   };
+
+  // Calculate biomass (ABW * Fish Count)
+  const calculateBiomass = () => {
+    if (latestAveWeight?.weight && latestFishCount?.count) {
+      return (latestAveWeight.weight * latestFishCount.count).toFixed(2);
+    }
+    return 'N/A';
+  };
+
+  // Calculate weight percentage
+  const weightPercentage = ((weight / MAX_WEIGHT) * 100).toFixed(1);
 
   return (
     <View style={styles.base}>
@@ -40,7 +54,7 @@ export default function Home() {
         </View>
         <View style={styles.container}>
           <Text style={styles.text}>Feed Level</Text>
-          <Text style={styles.textValue}>{weight}%</Text>
+          <Text style={styles.textValue}>{weightPercentage}%</Text>
           <Text style={styles.text}>Refil Soon</Text>
         </View>
       </View>
@@ -57,11 +71,16 @@ export default function Home() {
         </View>
         <View style={styles.container1}>
           <Text style={styles.text}>No. of Fish</Text>
-          <Text style={styles.textValue}>{weight}</Text>
+          <Text style={styles.textValue}>
+            {latestFishCount?.count ?? 'N/A'}
+          </Text>
+          <Text style={styles.text}>
+            {latestFishCount?.date ? formatDate(latestFishCount.date) : '-'}
+          </Text>
         </View>
         <View style={styles.container1}>
           <Text style={styles.text}>Biomass</Text>
-          <Text style={styles.textValue}>{weight}</Text>
+          <Text style={styles.textValue}>{calculateBiomass()} kg</Text>
         </View>
       </View>
 
