@@ -19,7 +19,13 @@ export default function Layout() {
   const activeTab = segments[segments.length - 1];
 
   return (
-    <Tabs style={{ flex: 1, height: '20%', paddingHorizontal: 10, backgroundColor: mainColors.background }}>
+    <Tabs
+      style={{
+        flex: 1,
+        height: '20%',
+        paddingHorizontal: 10,
+        backgroundColor: mainColors.background
+      }}>
       <TabList style={{
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -54,10 +60,3 @@ export default function Layout() {
     </Tabs>
   )
 }
-
-const styles = StyleSheet.create({
-  tabBtn: {
-    width: 100,
-    paddingVertical: 10
-  }
-})
