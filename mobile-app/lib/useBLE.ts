@@ -184,7 +184,32 @@ export default function useBLE(): BluetoothApi {
     const rawData = decode(characteristic.value);
     console.log("Received data:", rawData);
 
-    // Arduino sends: "temperature,weight,servoAngle,feedingActive"
+    // Handle special status messages from Arduino
+    if (rawData === "SERVO_RUNNING") {
+      setIsServoRunning(true);
+      setIsServoClosed(false);
+      console.log("Servo status updated: RUNNING");
+      return;
+    }
+    
+    if (rawData === "SERVO_STOPPED") {
+      setIsServoRunning(false);
+      setIsServoClosed(true);
+      console.log("Servo status updated: STOPPED");
+      return;
+    }
+
+    // Handle status response
+    if (rawData.startsWith("STATUS:")) {
+      const status = rawData.split(":")[1];
+      const isRunning = status === "RUNNING";
+      setIsServoRunning(isRunning);
+      setIsServoClosed(!isRunning);
+      console.log("Servo status updated:", status);
+      return;
+    }
+
+    // Arduino sends: "temperature,weight,servoRunning(1/0)"
     const values = rawData.split(",");
     
     if (values.length >= 1) {
@@ -198,17 +223,11 @@ export default function useBLE(): BluetoothApi {
     }
     
     if (values.length >= 3) {
-      const angle = parseInt(values[2]);
-      setServoAngle(angle);
-      // Servo is running if angle is at the open position (130)
-      setIsServoRunning(angle >= 100);
-      // Servo is closed if angle is at or near the close position (30)
-      setIsServoClosed(angle <= 50);
-    }
-    
-    if (values.length >= 4) {
-      const feedingActive = parseInt(values[3]) === 1;
-      setIsFeedingActive(feedingActive);
+      // Third value is "1" for running, "0" for stopped
+      const servoState = values[2].trim() === "1";
+      setIsServoRunning(servoState);
+      setIsServoClosed(!servoState); // If running, then NOT closed
+      console.log("Servo state from data:", servoState ? "RUNNING" : "STOPPED");
     }
   };
 

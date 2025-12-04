@@ -3,26 +3,42 @@ import { mainColors } from "@/utils/global-theme";
 import Feather from '@expo/vector-icons/Feather';
 import { useBLEContext } from "@/contexts/BLEprovider";
 import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SetBiomassModal from "@/components/setBiomassModal";
 import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
 import { calculateFeedAmount } from "@/actions/send-templogs";
 import { toggleServo } from "@/actions/servo-actions";
+import { Pause, Play } from 'lucide-react-native'
 
 export default function Home() {
-  const { 
-    connectedDevice, 
-    weight, 
-    temperature, 
-    sendCommand, 
-    isServoClosed, 
+  const {
+    connectedDevice,
+    weight,
+    temperature,
+    sendCommand,
+    isServoClosed,
     isServoRunning,
-    servoAngle 
   } = useBLEContext();
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
   const { latestFishCount, refreshFishCounts } = useFishCount();
   const [showBiomassModal, setShowBiomassModal] = useState(false);
+
+  // Local state to force re-renders
+  const [servoStatus, setServoStatus] = useState({
+    running: false,
+    closed: true
+  });
+
   const MAX_WEIGHT = 100; // Maximum weight capacity in kg
+
+  // Update local state when BLE context changes
+  useEffect(() => {
+    setServoStatus({
+      running: isServoRunning,
+      closed: isServoClosed
+    });
+    console.log("Servo state updated - Running:", isServoRunning, "Closed:", isServoClosed);
+  }, [isServoRunning, isServoClosed]);
 
   const handleModalClose = async () => {
     setShowBiomassModal(false);
@@ -36,7 +52,7 @@ export default function Home() {
       return;
     }
     try {
-      await toggleServo(isServoClosed, sendCommand);
+      await toggleServo(servoStatus.closed, sendCommand);
     } catch (error) {
       Alert.alert('Error', 'Failed to control servo');
     }
@@ -77,7 +93,6 @@ export default function Home() {
       <View style={styles.box}>
         <View style={styles.container}>
           <Text style={styles.text}>Water Temperature</Text>
-          {/* <Thermometer /> */}
           <Text style={styles.textValue}>{temperature}°C</Text>
           <Text style={styles.text}>Optimal</Text>
         </View>
@@ -90,7 +105,6 @@ export default function Home() {
       <View style={styles.box1}>
         <View style={styles.container1}>
           <Text style={styles.text1}>ABW</Text>
-          {/* <Thermometer /> */}
           <Text style={styles.textValue}>
             {latestAveWeight?.weight ? `${latestAveWeight.weight} kg` : 'N/A'}
           </Text>
@@ -123,16 +137,15 @@ export default function Home() {
       {/* Dispense Feed */}
       <View style={styles.dispenseFeedBox}>
         <Text style={styles.title}>Dispense Feed</Text>
-        
+
         {/* Servo Status Display */}
         <View style={styles.servoStatusBox}>
-          <Text style={styles.text}>
-            Servo Status: {isServoClosed ? 'Closed' : 'Open'}
+          <Text style={[styles.text, { fontWeight: 'bold' }]}>
+            Status: {servoStatus.running ? '🟢 Running' : '🔴 Stopped'}
           </Text>
           <Text style={styles.text}>
-            Running: {isServoRunning ? 'Yes' : 'No'}
+            Position: {servoStatus.closed ? 'Closed' : 'Open'}
           </Text>
-          <Text style={styles.text}>Angle: {servoAngle}°</Text>
         </View>
 
         <View style={styles.box}>
@@ -148,15 +161,22 @@ export default function Home() {
             )}
           </View>
         </View>
-        
-        <TouchableOpacity 
-          style={buttonS.primary}
+
+        <TouchableOpacity
+          style={[
+            buttonS.primary,
+            !connectedDevice && { opacity: 0.5 }
+          ]}
           onPress={handleToggleServo}
           disabled={!connectedDevice}
         >
-          <Feather name="check" size={24} color={mainColors.foreground} />
+          {servoStatus.running ? (
+            <Pause color={mainColors.foreground} />
+          ) : (
+            <Play color={mainColors.foreground} />
+          )}
           <Text style={styles.textValue2}>
-            {isServoClosed ? 'Open Servo' : 'Close Servo'}
+            {servoStatus.running ? 'Stop Feeding' : 'Start Feeding'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -11,13 +11,6 @@ export default function RootLayout() {
       <DatabaseProvider>
         <BLEProvider>
           <StatusBar style="dark" translucent />
-          {/* <Stack screenOptions={{
-            headerStyle: { backgroundColor: mainColors.background },
-            headerTitleStyle: { color: mainColors.foreground }
-          }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack> */}
           <Slot />
         </BLEProvider>
       </DatabaseProvider>

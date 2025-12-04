@@ -32,6 +32,13 @@ DallasTemperature sensors(&oneWire);
 // ------------------- SERVO --------------------
 Servo myservo;
 int servoPin = 23;
+int servoAngle = 0;
+int servoDirection = 1;  // 1 = forward, -1 = backward
+const int SERVO_MIN = 0;
+const int SERVO_MAX = 180;
+const int SERVO_STEP = 2;  // degrees per step
+const unsigned long SERVO_UPDATE_MS = 15UL;  // 15ms = faster movement
+bool servoRunning = false;  // Servo state: true = running, false = stopped
 
 // ------------------- TIMING / FILTER -------------------
 const float FAST_ALPHA = 0.90f;
@@ -40,33 +47,57 @@ const float JUMP_THRESHOLD_KG = 0.02f;
 const float DETECT_THRESHOLD_KG = 0.02f;
 const unsigned long TEMP_INTERVAL_MS = 2000UL;
 
-// ------------------- SERVO POSITIONS -----------------
-int feedOpenAngle = 130;   // Servo runs (dispenses)
-int feedCloseAngle = 30;   // Servo stops
-int servoAngle = 30;
-
-// ------------------- FEEDING PARAMETERS -----------------
-bool feedRequestActive = false;
-bool manualServoControl = false;  // Add this line
-float targetKg = 0.0f;
-float startWeight = 0.0f;
-unsigned long feedStartTime = 0;
-const unsigned long FEED_MAX_DURATION_MS = 30000UL;
-const float FEED_MAX_KG = 5.0f;
-
 // ------------------- VARIABLES --------------------
 float filteredKg = 0.0f;
 float rawBuf = 0.0f;
 unsigned long lastTempTime = 0;
+unsigned long lastServoUpdate = 0;
 float lastTemp = 0.0f;
-bool servoIsOpen = false;  // Add this line to track servo state
 
-// Helper to write a 0..360 "angle" to the servo
-void writeServo360(int angle)
+// Function to handle commands
+void handleCommand(String cmd)
 {
-  angle = constrain(angle, 0, 360);
-  int pulse = map(angle, 0, 360, 500, 2400);
-  myservo.writeMicroseconds(pulse);
+  cmd.trim();
+  cmd.toUpperCase();
+  
+  Serial.print("Command received: ");
+  Serial.println(cmd);
+  
+  if (cmd == "RUN" || cmd == "START")
+  {
+    servoRunning = true;
+    Serial.println("SERVO RUNNING");
+    if (deviceConnected)
+    {
+      pCharData->setValue("SERVO_RUNNING");
+      pCharData->notify();
+    }
+  }
+  else if (cmd == "STOP" || cmd == "HALT")
+  {
+    servoRunning = false;
+    Serial.println("SERVO STOPPED");
+    if (deviceConnected)
+    {
+      pCharData->setValue("SERVO_STOPPED");
+      pCharData->notify();
+    }
+  }
+  else if (cmd == "STATUS")
+  {
+    String status = servoRunning ? "RUNNING" : "STOPPED";
+    Serial.print("Servo status: ");
+    Serial.println(status);
+    if (deviceConnected)
+    {
+      pCharData->setValue(("STATUS:" + status).c_str());
+      pCharData->notify();
+    }
+  }
+  else
+  {
+    Serial.println("Unknown command. Use: RUN, STOP, or STATUS");
+  }
 }
 
 // BLE Callbacks
@@ -94,46 +125,7 @@ class CommandCallbacks : public BLECharacteristicCallbacks
     if (value.length() > 0)
     {
       String cmd = String(value.c_str());
-      cmd.trim();
-      Serial.print("BLE RX: ");
-      Serial.println(cmd);
-
-      if (cmd.startsWith("FEED_NOW:"))
-      {
-        float req = cmd.substring(9).toFloat();
-        if (req > 0.0f && req <= FEED_MAX_KG)
-        {
-          manualServoControl = false;
-          targetKg = req;
-          startWeight = filteredKg;
-          feedRequestActive = true;
-          feedStartTime = millis();
-          servoAngle = feedOpenAngle;
-          writeServo360(servoAngle);
-          servoIsOpen = true;  // Add this line
-          pCharData->setValue("FEEDING_STARTED");
-          pCharData->notify();
-          Serial.println("Servo OPEN - Dispensing...");
-        }
-      }
-      else if (cmd == "SERVO_OPEN")
-      {
-        manualServoControl = true;  // Add this line
-        feedRequestActive = false;  // Add this line
-        servoAngle = feedOpenAngle;
-        writeServo360(servoAngle);
-        servoIsOpen = true;  // Add this line
-        Serial.println("Manual: Servo OPEN");
-      }
-      else if (cmd == "SERVO_CLOSE")
-      {
-        manualServoControl = false;  // Add this line
-        feedRequestActive = false;   // Add this line
-        servoAngle = feedCloseAngle;
-        writeServo360(servoAngle);
-        servoIsOpen = false;  // Add this line
-        Serial.println("Manual: Servo CLOSE");
-      }
+      handleCommand(cmd);
     }
   }
 };
@@ -166,10 +158,11 @@ void setup()
   Serial.println(" DS18B20 devices");
 
   // ---------- SERVO ----------
-  myservo.attach(servoPin, 500, 2400);
-  servoAngle = feedCloseAngle;  // Start in closed position
-  writeServo360(servoAngle);
+  myservo.attach(servoPin, 1000, 2000);  // Standard servo pulse range
+  servoAngle = 0;  // Start at 0 degrees
+  myservo.write(servoAngle);
   lastTempTime = millis();
+  lastServoUpdate = millis();
 
   // ---------- BLE ----------
   BLEDevice::init("FeedFlow");
@@ -195,93 +188,40 @@ void setup()
   pAdvertising->start();
 
   Serial.println("BLE started. Device name: FeedFlow");
-  Serial.println("Ready. Servo in CLOSED position.");
+  Serial.println("\nCommands: RUN, STOP, STATUS");
+  Serial.println("Type a command in Serial Monitor and press Enter\n");
 }
 
 void loop()
 {
   unsigned long now = millis();
 
-  // ----- CHECK SERIAL COMMANDS -----
-  if (Serial.available() > 0)
+  // ----- CHECK SERIAL MONITOR FOR COMMANDS -----
+  if (Serial.available())
   {
     String cmd = Serial.readStringUntil('\n');
-    cmd.trim();
-    Serial.print("Serial RX: ");
-    Serial.println(cmd);
+    handleCommand(cmd);
+  }
 
-    if (cmd.startsWith("FEED_NOW:"))
+  // ----- CONTINUOUS SERVO SWEEPING (only if running) -----
+  if (servoRunning && (now - lastServoUpdate >= SERVO_UPDATE_MS))
+  {
+    servoAngle += (servoDirection * SERVO_STEP);
+    
+    // Reverse direction at limits
+    if (servoAngle >= SERVO_MAX)
     {
-      float req = cmd.substring(9).toFloat();
-      if (req > 0.0f && req <= FEED_MAX_KG)
-      {
-        manualServoControl = false;  // Exit manual mode
-        targetKg = req;
-        startWeight = filteredKg;
-        feedRequestActive = true;
-        feedStartTime = millis();
-        servoAngle = feedOpenAngle;
-        writeServo360(servoAngle);
-        servoIsOpen = true;  // Update state
-        Serial.println("FEEDING_STARTED - Servo OPEN");
-      }
-      else
-      {
-        Serial.println("Invalid feed amount. Use 0.1 to 5.0 kg");
-      }
+      servoAngle = SERVO_MAX;
+      servoDirection = -1;
     }
-    else if (cmd == "SERVO_OPEN")
+    else if (servoAngle <= SERVO_MIN)
     {
-      manualServoControl = true;  // Enter manual mode
-      feedRequestActive = false;  // Stop auto feeding
-      servoAngle = feedOpenAngle;
-      writeServo360(servoAngle);
-      servoIsOpen = true;  // Update state
-      Serial.println("Manual: Servo OPEN");
+      servoAngle = SERVO_MIN;
+      servoDirection = 1;
     }
-    else if (cmd == "SERVO_CLOSE")
-    {
-      manualServoControl = false;  // Exit manual mode
-      feedRequestActive = false;   // Stop auto feeding
-      servoAngle = feedCloseAngle;
-      writeServo360(servoAngle);
-      servoIsOpen = false;  // Update state
-      Serial.println("Manual: Servo CLOSE");
-    }
-    else if (cmd == "STATUS")
-    {
-      Serial.println("=== STATUS ===");
-      Serial.print("Weight: ");
-      Serial.print(filteredKg, 3);
-      Serial.println(" kg");
-      Serial.print("Temperature: ");
-      Serial.print(lastTemp, 2);
-      Serial.println(" C");
-      Serial.print("Servo Angle: ");
-      Serial.println(servoAngle);
-      Serial.print("Servo State: ");
-      Serial.println(servoIsOpen ? "OPEN" : "CLOSED");  // Show servo state
-      Serial.print("Manual Control: ");
-      Serial.println(manualServoControl ? "YES" : "NO");
-      Serial.print("Feeding Active: ");
-      Serial.println(feedRequestActive ? "YES" : "NO");
-      if (feedRequestActive)
-      {
-        Serial.print("Target: ");
-        Serial.print(targetKg, 3);
-        Serial.print(" kg | Dispensed: ");
-        Serial.println((filteredKg - startWeight), 3);
-      }
-      Serial.println("==============");
-    }
-    else
-    {
-      Serial.println("Unknown command. Available commands:");
-      Serial.println("  SERVO_OPEN - Open servo");
-      Serial.println("  SERVO_CLOSE - Close servo");
-      Serial.println("  FEED_NOW:X - Dispense X kg (e.g., FEED_NOW:0.5)");
-      Serial.println("  STATUS - Show current status");
-    }
+    
+    myservo.write(servoAngle);
+    lastServoUpdate = now;
   }
 
   // ----- UPDATE LOAD CELL -----
@@ -311,50 +251,19 @@ void loop()
     Serial.print(" | Weight kg: ");
     Serial.print(filteredKg, 3);
     Serial.print(" | Servo: ");
-    Serial.println(servoIsOpen ? "OPEN" : "CLOSED");  // Log servo state
+    Serial.print(servoRunning ? "RUNNING" : "STOPPED");
+    Serial.print(" @ ");
+    Serial.print(servoAngle);
+    Serial.println("°");
 
     float outKg = (filteredKg >= DETECT_THRESHOLD_KG) ? filteredKg : 0.0f;
 
-    String btData = String(tempC, 2) + "," + String(outKg, 3) + "," +
-                    String(servoAngle) + "," + String(feedRequestActive ? 1 : 0);
+    String btData = String(tempC, 2) + "," + String(outKg, 3) + "," + 
+                    String(servoRunning ? "1" : "0");
 
     pCharData->setValue(btData.c_str());
     pCharData->notify();
 
     lastTempTime = now;
-  }
-
-  // ----- FEEDING LOGIC -----
-  if (feedRequestActive)
-  {
-    // Safety timeout
-    if (now - feedStartTime > FEED_MAX_DURATION_MS)
-    {
-      feedRequestActive = false;
-      servoAngle = feedCloseAngle;
-      writeServo360(servoAngle);
-      servoIsOpen = false;  // Update state
-      if (deviceConnected) {
-        pCharData->setValue("FEED_TIMEOUT");
-        pCharData->notify();
-      }
-      Serial.println("Feed timeout - Servo CLOSED");
-    }
-    else
-    {
-      float dispensed = filteredKg - startWeight;
-      if (dispensed >= targetKg)
-      {
-        feedRequestActive = false;
-        servoAngle = feedCloseAngle;
-        writeServo360(servoAngle);
-        servoIsOpen = false;  // Update state
-        if (deviceConnected) {
-          pCharData->setValue("FEEDING_COMPLETE");
-          pCharData->notify();
-        }
-        Serial.println("Feed complete - Servo CLOSED");
-      }
-    }
   }
 }
