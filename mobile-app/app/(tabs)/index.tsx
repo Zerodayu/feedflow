@@ -12,6 +12,7 @@ import { calculateFeedAmount } from "@/actions/send-templogs";
 import { toggleServo } from "@/actions/servo-actions";
 import { Pause, Play, Zap, ClockPlus, Edit2, Trash2 } from 'lucide-react-native'
 import SetScheduleFeed from "@/components/setScheduleFeed";
+import { useScheduleAlarm } from '@/utils/useScheduleAlarm';
 
 export default function Home() {
   const {
@@ -113,9 +114,26 @@ export default function Home() {
     );
   };
 
+  const { isFeeding: isScheduledFeeding } = useScheduleAlarm({
+    schedules: scheduleFeeds,
+    currentWeight: weight,
+    sendCommand,
+    connectedDevice,
+    startFeedingSession,
+    endFeedingSession,
+    onScheduleComplete: async (scheduleId) => {
+      await deleteScheduleFeed(scheduleId);
+      await refreshScheduleFeeds();
+    },
+  });
+
   const handleToggleServo = async () => {
     if (!connectedDevice) {
       Alert.alert('Error', 'Please connect to device first');
+      return;
+    }
+    if (isScheduledFeeding) {
+      Alert.alert('Info', 'Cannot control servo during scheduled feeding');
       return;
     }
     try {
@@ -169,6 +187,11 @@ export default function Home() {
       return;
     }
 
+    if (isScheduledFeeding) {
+      Alert.alert('Info', 'Cannot start auto feed during scheduled feeding');
+      return;
+    }
+
     if (autoFeedAmount === 'N/A') {
       Alert.alert('Error', 'Cannot calculate feed amount. Please set biomass data first.');
       return;
@@ -182,7 +205,6 @@ export default function Home() {
       Alert.alert('Warning', 'Feed level is low. Please refill the container.');
       return;
     }
-
     try {
       // Calculate feeding duration based on feed amount
       // Assuming 1 kg/day = continuous running for proportional time
@@ -269,7 +291,7 @@ export default function Home() {
         {/* Servo Status Display */}
         <View style={styles.servoStatusBox}>
           <Text style={[styles.text, { fontWeight: 'bold' }]}>
-            Status: {servoStatus.running ? '🟢 Running' : '🔴 Stopped'}
+            Status: {isScheduledFeeding ? 'SCHEDULED FEEDING' : (servoStatus.running ? "Running" : "Stopped")}
           </Text>
           <Text style={styles.text}>
             Position: {servoStatus.closed ? 'Closed' : 'Open'}
