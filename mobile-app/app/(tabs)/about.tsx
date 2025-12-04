@@ -7,7 +7,7 @@ export default function About() {
     <View style={styles.base}>
       <Text style={styles.title}>FeedFlow</Text>
       <Image
-          source={require('@/assets/images/feedflow_logo.png')}
+          source={require('@/assets/images/logo.png')}
           style={{ width: 300, height: 300, marginTop: 20 }}
           resizeMode="contain"
         />

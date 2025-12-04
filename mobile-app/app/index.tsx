@@ -39,7 +39,7 @@ export default function Index() {
       <View style={styles.boxUp}>
         <Text style={styles.title}>Get Started</Text>
         <Image
-          source={require('@/assets/images/feedflow_logo.png')}
+          source={require('@/assets/images/logo.png')}
           style={{ width: 300, height: 300, marginTop: 20 }}
           resizeMode="contain"
         />
