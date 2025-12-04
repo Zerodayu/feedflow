@@ -2,13 +2,16 @@ import { buttonS } from "@/styles/buttons";
 import { mainColors } from "@/utils/global-theme";
 import Feather from '@expo/vector-icons/Feather';
 import { useBLEContext } from "@/contexts/BLEprovider";
-import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Alert, ScrollView } from "react-native";
 import { useState, useEffect } from "react";
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 import SetBiomassModal from "@/components/setBiomassModal";
-import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
+import { useAveWeight, useFishCount, useScheduleFeeds } from "@/contexts/DBprovider";
 import { calculateFeedAmount } from "@/actions/send-templogs";
 import { toggleServo } from "@/actions/servo-actions";
-import { Pause, Play, Zap } from 'lucide-react-native'
+import { Pause, Play, Zap, ClockPlus, Edit2, Trash2 } from 'lucide-react-native'
+import SetScheduleFeed from "@/components/setScheduleFeed";
 
 export default function Home() {
   const {
@@ -23,7 +26,10 @@ export default function Home() {
   } = useBLEContext();
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
   const { latestFishCount, refreshFishCounts } = useFishCount();
+  const { scheduleFeeds, deleteScheduleFeed, refreshScheduleFeeds } = useScheduleFeeds();
   const [showBiomassModal, setShowBiomassModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<{ id: number; kg: number; time: string } | null>(null);
 
   // Local state to force re-renders
   const [servoStatus, setServoStatus] = useState({
@@ -32,6 +38,9 @@ export default function Home() {
   });
 
   const MAX_WEIGHT = 10; // Maximum weight capacity in kg
+
+  // Get the single schedule (should only be one)
+  const currentSchedule = scheduleFeeds.length > 0 ? scheduleFeeds[0] : null;
 
   // Update local state when BLE context changes
   useEffect(() => {
@@ -42,10 +51,66 @@ export default function Home() {
     console.log("Servo state updated - Running:", isServoRunning, "Closed:", isServoClosed);
   }, [isServoRunning, isServoClosed]);
 
+  // Refresh schedule feeds on mount and when screen gains focus
+  useEffect(() => {
+    refreshScheduleFeeds();
+  }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshScheduleFeeds();
+      refreshAveWeights();
+      refreshFishCounts();
+    }, [refreshScheduleFeeds, refreshAveWeights, refreshFishCounts])
+  );
+
+  // Refresh when modal visibility changes
+  useEffect(() => {
+    if (!showScheduleModal) {
+      // When modal closes, refresh the data
+      refreshScheduleFeeds();
+    }
+  }, [showScheduleModal, refreshScheduleFeeds]);
+
   const handleModalClose = async () => {
     setShowBiomassModal(false);
     await refreshAveWeights();
     await refreshFishCounts();
+  };
+
+  const handleScheduleModalClose = async () => {
+    setShowScheduleModal(false);
+    setEditingSchedule(null);
+    // Ensure refresh happens
+    await refreshScheduleFeeds();
+  };
+
+  const handleEditSchedule = () => {
+    if (currentSchedule) {
+      setEditingSchedule(currentSchedule);
+      setShowScheduleModal(true);
+    }
+  };
+
+  const handleDeleteSchedule = async () => {
+    if (!currentSchedule) return;
+    
+    Alert.alert(
+      'Delete Schedule',
+      'Are you sure you want to delete this scheduled feed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteScheduleFeed(currentSchedule.id);
+            await refreshScheduleFeeds();
+          }
+        }
+      ]
+    );
   };
 
   const handleToggleServo = async () => {
@@ -66,6 +131,14 @@ export default function Home() {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Format time from 24-hour to 12-hour format
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const isPM = hours >= 12;
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
   };
 
   // Calculate biomass (ABW * Fish Count) in kg
@@ -141,6 +214,7 @@ export default function Home() {
   };
 
   return (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
     <View style={styles.base}>
 
       {/* info boxes */}
@@ -245,13 +319,86 @@ export default function Home() {
           </Text>
         </TouchableOpacity>
 
+        {/* Scheduled Feed Section */}
+        <View style={styles.scheduledFeedSection}>
+          <View style={styles.scheduledFeedHeader}>
+            <Text style={styles.scheduledFeedTitle}>Daily Scheduled Feed</Text>
+          </View>
+
+          {currentSchedule ? (
+            // Show existing schedule
+            <TouchableOpacity 
+              style={styles.scheduleCard}
+              onPress={handleEditSchedule}
+              activeOpacity={0.7}
+            >
+              <View style={styles.scheduleCardContent}>
+                <View style={styles.scheduleIconContainer}>
+                  <Feather name="clock" size={32} color={mainColors.primary} />
+                </View>
+                <View style={styles.scheduleDetails}>
+                  <Text style={styles.scheduleTimeDisplay}>{formatTime(currentSchedule.time)}</Text>
+                  <Text style={styles.scheduleAmountDisplay}>{currentSchedule.kg} kg of feed</Text>
+                  <Text style={styles.scheduleHint}>Tap to edit schedule</Text>
+                </View>
+                <View style={styles.scheduleCardActions}>
+                  <TouchableOpacity
+                    style={styles.scheduleEditButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleEditSchedule();
+                    }}
+                  >
+                    <Edit2 size={20} color={mainColors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.scheduleDeleteButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSchedule();
+                    }}
+                  >
+                    <Trash2 size={20} color={mainColors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            // Show empty state with Add button
+            <View style={styles.emptyScheduleCard}>
+              <Feather name="clock" size={48} color={mainColors.foreground + "40"} />
+              <Text style={styles.emptyScheduleTitle}>No schedule set</Text>
+              <Text style={styles.emptyScheduleSubtext}>
+                Set a daily feeding time to automate your fish feeding
+              </Text>
+              <TouchableOpacity
+                style={styles.addScheduleButtonLarge}
+                onPress={() => {
+                  setEditingSchedule(null);
+                  setShowScheduleModal(true);
+                }}
+              >
+                <ClockPlus size={20} color={mainColors.foreground} />
+                <Text style={styles.addScheduleButtonText}>Set Schedule</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
       </View>
 
       <SetBiomassModal
         visible={showBiomassModal}
         closeModal={handleModalClose}
       />
+      
+      <SetScheduleFeed
+        visible={showScheduleModal}
+        closeModal={handleScheduleModalClose}
+        editingSchedule={editingSchedule}
+      />
     </View>
+    </ScrollView>
   );
 }
 
@@ -358,5 +505,116 @@ const styles = StyleSheet.create({
   feedSubtext: {
     color: mainColors.foreground,
     fontSize: 12,
-  }
+  },
+  scheduledFeedSection: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: mainColors.accent,
+    borderRadius: mainColors.sm,
+    padding: 16,
+    backgroundColor: mainColors.background,
+  },
+  scheduledFeedHeader: {
+    marginBottom: 16,
+  },
+  scheduledFeedTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: mainColors.foreground,
+    textAlign: 'center',
+  },
+  scheduleCard: {
+    backgroundColor: mainColors.accent,
+    borderRadius: mainColors.sm,
+    borderWidth: 2,
+    borderColor: mainColors.primary,
+    overflow: 'hidden',
+  },
+  scheduleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 16,
+  },
+  scheduleIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: mainColors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleDetails: {
+    flex: 1,
+    gap: 4,
+  },
+  scheduleTimeDisplay: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: mainColors.foreground,
+  },
+  scheduleAmountDisplay: {
+    fontSize: 14,
+    color: mainColors.foreground,
+    opacity: 0.8,
+  },
+  scheduleHint: {
+    fontSize: 11,
+    color: mainColors.foreground,
+    opacity: 0.6,
+    fontStyle: 'italic',
+  },
+  scheduleCardActions: {
+    gap: 8,
+  },
+  scheduleEditButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: mainColors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleDeleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: mainColors.destructive + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyScheduleCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  emptyScheduleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: mainColors.foreground,
+    marginTop: 8,
+  },
+  emptyScheduleSubtext: {
+    fontSize: 13,
+    color: mainColors.foreground,
+    opacity: 0.7,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 18,
+  },
+  addScheduleButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: mainColors.primary,
+    borderRadius: mainColors.sm,
+    marginTop: 8,
+  },
+  addScheduleButtonText: {
+    color: mainColors.foreground,
+    fontWeight: '600',
+    fontSize: 14,
+  },
 })

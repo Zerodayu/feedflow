@@ -3,6 +3,7 @@ import { useBLEContext } from '@/contexts/BLEprovider';
 import { mainColors } from '@/utils/global-theme';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Link } from 'expo-router';
 import { Power } from 'lucide-react-native'
 
 export default function Index() {
@@ -43,6 +44,7 @@ export default function Index() {
           resizeMode="contain"
         />
       </View>
+      <Link href="/(tabs)"> go to tabs</Link>
       <View style={styles.boxDown}>
         <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
           <Power color={mainColors.foreground} />

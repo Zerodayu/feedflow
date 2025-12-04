@@ -29,16 +29,15 @@ const int calVal_eepromAdress = 0;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-// ------------------- SERVO --------------------
+// ------------------- SERVO (CONTINUOUS ROTATION) --------------------
 Servo myservo;
 int servoPin = 23;
-int servoAngle = 0;
-int servoDirection = 1;  // 1 = forward, -1 = backward
-const int SERVO_MIN = 0;
-const int SERVO_MAX = 180;
-const int SERVO_STEP = 2;  // degrees per step
-const unsigned long SERVO_UPDATE_MS = 20UL;  // 15ms = faster movement
 bool servoRunning = false;  // Servo state: true = running, false = stopped
+
+// For continuous rotation servo:
+// 0   = Max Speed Clockwise
+// 90  = STOP
+// 180 = Max Speed Counter-Clockwise
 
 // ------------------- TIMING / FILTER -------------------
 const float FAST_ALPHA = 0.90f;
@@ -51,7 +50,6 @@ const unsigned long TEMP_INTERVAL_MS = 2000UL;
 float filteredKg = 0.0f;
 float rawBuf = 0.0f;
 unsigned long lastTempTime = 0;
-unsigned long lastServoUpdate = 0;
 float lastTemp = 0.0f;
 
 // Function to handle commands
@@ -66,6 +64,7 @@ void handleCommand(String cmd)
   if (cmd == "RUN" || cmd == "START")
   {
     servoRunning = true;
+    myservo.write(180);  // Spin counter-clockwise at max speed
     Serial.println("SERVO RUNNING");
     if (deviceConnected)
     {
@@ -76,6 +75,7 @@ void handleCommand(String cmd)
   else if (cmd == "STOP" || cmd == "HALT")
   {
     servoRunning = false;
+    myservo.write(90);  // Stop the servo
     Serial.println("SERVO STOPPED");
     if (deviceConnected)
     {
@@ -157,12 +157,11 @@ void setup()
   Serial.print(sensors.getDeviceCount());
   Serial.println(" DS18B20 devices");
 
-  // ---------- SERVO ----------
-  myservo.attach(servoPin, 1000, 2000);  // Standard servo pulse range
-  servoAngle = 0;  // Start at 0 degrees
-  myservo.write(servoAngle);
+  // ---------- SERVO (CONTINUOUS ROTATION) ----------
+  // Attach with pulse width for MG996R continuous rotation (500-2400us)
+  myservo.attach(servoPin, 500, 2400);
+  myservo.write(90);  // Start stopped (90 = stop for continuous servo)
   lastTempTime = millis();
-  lastServoUpdate = millis();
 
   // ---------- BLE ----------
   BLEDevice::init("FeedFlow");
@@ -203,27 +202,6 @@ void loop()
     handleCommand(cmd);
   }
 
-  // ----- CONTINUOUS SERVO SWEEPING (only if running) -----
-  if (servoRunning && (now - lastServoUpdate >= SERVO_UPDATE_MS))
-  {
-    servoAngle += (servoDirection * SERVO_STEP);
-    
-    // Reverse direction at limits
-    if (servoAngle >= SERVO_MAX)
-    {
-      servoAngle = SERVO_MAX;
-      servoDirection = -1;
-    }
-    else if (servoAngle <= SERVO_MIN)
-    {
-      servoAngle = SERVO_MIN;
-      servoDirection = 1;
-    }
-    
-    myservo.write(servoAngle);
-    lastServoUpdate = now;
-  }
-
   // ----- UPDATE LOAD CELL -----
   if (LoadCell.update())
   {
@@ -251,10 +229,7 @@ void loop()
     Serial.print(" | Weight kg: ");
     Serial.print(filteredKg, 3);
     Serial.print(" | Servo: ");
-    Serial.print(servoRunning ? "RUNNING" : "STOPPED");
-    Serial.print(" @ ");
-    Serial.print(servoAngle);
-    Serial.println("°");
+    Serial.println(servoRunning ? "RUNNING" : "STOPPED");
 
     float outKg = (filteredKg >= DETECT_THRESHOLD_KG) ? filteredKg : 0.0f;
 

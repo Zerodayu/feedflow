@@ -7,7 +7,7 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype, TempLogType, ave_weight, total_fish, AlertLogType, NotesType } from '../database/db-schema';
+import type { FeedLogtype, TempLogType, ave_weight, total_fish, AlertLogType, NotesType, ScheduleFeedType } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -20,7 +20,7 @@ if (
   throw new Error('Turso DB URL and Auth Token must be set in .env.local');
 }
 
-export const DB_NAME = 'feedflow-3';
+export const DB_NAME = 'feedflow-4';
 
 export const tursoOptions = {
   url: process.env.EXPO_PUBLIC_TURSO_DB_URL,
@@ -551,6 +551,96 @@ export function useNotes(): NotesHook {
     updateNote: handleUpdateNote,
     deleteNote: handleDeleteNote,
     refreshNotes: fetchNotes,
+  };
+}
+
+// ScheduleFeeds specific hook
+interface ScheduleFeedsHook {
+  scheduleFeeds: ScheduleFeedType[];
+  createScheduleFeed: (scheduleFeed: Omit<ScheduleFeedType, 'id'>) => Promise<ScheduleFeedType | undefined>;
+  updateScheduleFeed: (id: number, updates: Partial<Omit<ScheduleFeedType, 'id'>>) => Promise<void>;
+  deleteScheduleFeed: (id: number) => Promise<void>;
+  refreshScheduleFeeds: () => Promise<void>;
+}
+
+export function useScheduleFeeds(): ScheduleFeedsHook {
+  const { db } = useDatabase();
+  const [scheduleFeeds, setScheduleFeeds] = useState<ScheduleFeedType[]>([]);
+
+  const fetchScheduleFeeds = useCallback(async () => {
+    try {
+      const scheduleFeedsList = await db.getAllAsync<ScheduleFeedType>(
+        'SELECT * FROM schedule_feeds ORDER BY time ASC'
+      );
+      setScheduleFeeds(scheduleFeedsList);
+    } catch (error) {
+      console.error('Failed to fetch schedule feeds:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchScheduleFeeds();
+  }, [fetchScheduleFeeds]);
+
+  const handleCreateScheduleFeed = useCallback(async (scheduleFeed: Omit<ScheduleFeedType, 'id'>) => {
+    try {
+      const result = await db.runAsync(
+        'INSERT INTO schedule_feeds (kg, time) VALUES (?, ?)',
+        scheduleFeed.kg,
+        scheduleFeed.time
+      );
+      await fetchScheduleFeeds();
+      return { 
+        ...scheduleFeed, 
+        id: result.lastInsertRowId
+      } as ScheduleFeedType;
+    } catch (e) {
+      console.error('Failed to create schedule feed:', e);
+    }
+    return undefined;
+  }, [db, fetchScheduleFeeds]);
+
+  const handleUpdateScheduleFeed = useCallback(async (id: number, updates: Partial<Omit<ScheduleFeedType, 'id'>>) => {
+    try {
+      const existingScheduleFeed = await db.getFirstAsync<ScheduleFeedType>(
+        'SELECT * FROM schedule_feeds WHERE id = ?',
+        [id]
+      );
+
+      if (!existingScheduleFeed) return;
+
+      const updatedScheduleFeed = {
+        kg: updates.kg ?? existingScheduleFeed.kg,
+        time: updates.time ?? existingScheduleFeed.time,
+      };
+
+      await db.runAsync(
+        'UPDATE schedule_feeds SET kg = ?, time = ? WHERE id = ?',
+        updatedScheduleFeed.kg,
+        updatedScheduleFeed.time,
+        id
+      );
+      await fetchScheduleFeeds();
+    } catch (e) {
+      console.error('Failed to update schedule feed:', e);
+    }
+  }, [db, fetchScheduleFeeds]);
+
+  const handleDeleteScheduleFeed = useCallback(async (id: number) => {
+    try {
+      await db.runAsync('DELETE FROM schedule_feeds WHERE id = ?', id);
+      await fetchScheduleFeeds();
+    } catch (e) {
+      console.error('Failed to delete schedule feed:', e);
+    }
+  }, [db, fetchScheduleFeeds]);
+
+  return {
+    scheduleFeeds,
+    createScheduleFeed: handleCreateScheduleFeed,
+    updateScheduleFeed: handleUpdateScheduleFeed,
+    deleteScheduleFeed: handleDeleteScheduleFeed,
+    refreshScheduleFeeds: fetchScheduleFeeds,
   };
 }
 

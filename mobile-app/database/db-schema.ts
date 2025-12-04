@@ -12,6 +12,12 @@ export type TempLogType = {
   date_created: string;
 }
 
+export type ScheduleFeedType = {
+  id: number;
+  kg: number;
+  time: string;
+}
+
 export type AlertLogType = {
   id: number;
   subject: string;
@@ -89,7 +95,12 @@ export const schema = {
       temperature REAL NOT NULL,
       observation TEXT NOT NULL,
       date_created TEXT NOT NULL
-    );`
-
+    );`,
+  schedule_feeds: `
+  CREATE TABLE IF NOT EXISTS schedule_feeds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kg REAL NOT NULL,
+    time TEXT NOT NULL
+  );`
   // Add more tables here as needed
 };

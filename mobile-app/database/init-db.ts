@@ -26,6 +26,7 @@ export async function initializeDatabase(db: SQLiteDatabase) {
     await db.execAsync(schema.total_fish);
     await db.execAsync(schema.ave_weight);
     await db.execAsync(schema.notes);
+    await db.execAsync(schema.schedule_feeds);
     console.log("Database initialized successfully");
     await db.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
   } else {
