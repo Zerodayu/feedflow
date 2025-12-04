@@ -7,10 +7,11 @@ import {
   useState,
   useRef,
 } from 'react';
-import type { FeedLogtype, TempLogType, ave_weight, total_fish, AlertLogType } from '../database/db-schema';
+import type { FeedLogtype, TempLogType, ave_weight, total_fish, AlertLogType, NotesType } from '../database/db-schema';
 import { initializeDatabase } from '@/database/init-db';
 import { resetDatabase } from '@/database/reset-sql';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { createNote, updateNote, deleteNote } from '@/actions/send-notes';
 
 if (
   !process.env.EXPO_PUBLIC_TURSO_DB_URL ||
@@ -474,6 +475,82 @@ export function useAlertLogs(): AlertLogsHook {
     createAlert,
     deleteAlert,
     refreshAlerts: fetchAlerts,
+  };
+}
+
+// Notes specific hook
+interface NotesHook {
+  notes: NotesType[];
+  createNote: (note: Omit<NotesType, 'id' | 'date_created'>) => Promise<NotesType | undefined>;
+  updateNote: (id: number, updates: Partial<Omit<NotesType, 'id' | 'date_created'>>) => Promise<void>;
+  deleteNote: (id: number) => Promise<void>;
+  refreshNotes: () => Promise<void>;
+}
+
+export function useNotes(): NotesHook {
+  const { db } = useDatabase();
+  const [notes, setNotes] = useState<NotesType[]>([]);
+
+  const fetchNotes = useCallback(async () => {
+    try {
+      const notesList = await db.getAllAsync<NotesType>(
+        'SELECT * FROM notes ORDER BY date_created DESC'
+      );
+      setNotes(notesList);
+    } catch (error) {
+      console.error('Failed to fetch notes:', error);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
+  const handleCreateNote = useCallback(async (note: Omit<NotesType, 'id' | 'date_created'>) => {
+    try {
+      const result = await createNote(db, note);
+      if (result.success && result.id) {
+        await fetchNotes();
+        return { 
+          ...note, 
+          id: result.id,
+          date_created: new Date().toISOString()
+        } as NotesType;
+      }
+    } catch (e) {
+      console.error('Failed to create note:', e);
+    }
+    return undefined;
+  }, [db, fetchNotes]);
+
+  const handleUpdateNote = useCallback(async (id: number, updates: Partial<Omit<NotesType, 'id' | 'date_created'>>) => {
+    try {
+      const result = await updateNote(db, id, updates);
+      if (result.success) {
+        await fetchNotes();
+      }
+    } catch (e) {
+      console.error('Failed to update note:', e);
+    }
+  }, [db, fetchNotes]);
+
+  const handleDeleteNote = useCallback(async (id: number) => {
+    try {
+      const result = await deleteNote(db, id);
+      if (result.success) {
+        await fetchNotes();
+      }
+    } catch (e) {
+      console.error('Failed to delete note:', e);
+    }
+  }, [db, fetchNotes]);
+
+  return {
+    notes,
+    createNote: handleCreateNote,
+    updateNote: handleUpdateNote,
+    deleteNote: handleDeleteNote,
+    refreshNotes: fetchNotes,
   };
 }
 

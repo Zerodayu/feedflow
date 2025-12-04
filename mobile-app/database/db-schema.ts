@@ -19,6 +19,15 @@ export type AlertLogType = {
   date_created: string;
 }
 
+export type NotesType = {
+  id: number;
+  title: string;
+  fish_count: number;
+  temperature: number;
+  observation: string;
+  date_created: string;
+}
+
 export type total_fish = {
   id: number;
   count: number;
@@ -70,6 +79,16 @@ export const schema = {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       weight REAL NOT NULL,
       date TEXT NOT NULL
+    );`,
+
+  notes: `
+    CREATE TABLE IF NOT EXISTS notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      fish_count INTEGER NOT NULL,
+      temperature REAL NOT NULL,
+      observation TEXT NOT NULL,
+      date_created TEXT NOT NULL
     );`
 
   // Add more tables here as needed
