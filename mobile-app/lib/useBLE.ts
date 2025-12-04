@@ -5,6 +5,7 @@ import { PermissionsAndroid, Platform } from "react-native";
 import { BleError, BleManager, Characteristic, Device } from "react-native-ble-plx";
 import { decode, encode } from "base-64";
 import { useTempLogs } from "../contexts/DBprovider";
+import { useSendFeedLogs } from "../actions/send-feedlogs";
 
 const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const CHAR_UUID_DATA = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -24,6 +25,8 @@ interface BluetoothApi {
   isServoRunning: boolean;
   isServoClosed: boolean;
   isFeedingActive: boolean;
+  startFeedingSession: () => Promise<void>;
+  endFeedingSession: () => Promise<void>;
 }
 
 const bleManager = new BleManager();
@@ -38,13 +41,31 @@ export default function useBLE(): BluetoothApi {
   const [isServoClosed, setIsServoClosed] = useState<boolean>(true);
   const [isFeedingActive, setIsFeedingActive] = useState<boolean>(false);
   const { createTempLog } = useTempLogs();
+  const { handleCreateFeedLog } = useSendFeedLogs();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const temperatureRef = useRef<number>(0);
+  const weightRef = useRef<number>(0);
+  
+  // Feeding session tracking - simplified to only track start and end values
+  const feedingSessionRef = useRef<{
+    startWeight: number;
+    startTemp: number;
+    endWeight: number;
+    endTemp: number;
+    isActive: boolean;
+  }>({
+    startWeight: 0,
+    startTemp: 0,
+    endWeight: 0,
+    endTemp: 0,
+    isActive: false,
+  });
 
-  // Update temperature ref whenever temperature changes
+  // Update refs whenever values change
   useEffect(() => {
     temperatureRef.current = temperature;
-  }, [temperature]);
+    weightRef.current = weight;
+  }, [temperature, weight]);
 
   // Save temperature every 10 seconds
   useEffect(() => {
@@ -74,6 +95,73 @@ export default function useBLE(): BluetoothApi {
       }
     };
   }, [connectedDevice, createTempLog]);
+
+  const startFeedingSession = async () => {
+    console.log("Starting feeding session");
+    const currentWeight = weightRef.current;
+    const currentTemp = temperatureRef.current;
+    
+    feedingSessionRef.current = {
+      startWeight: currentWeight,
+      startTemp: currentTemp,
+      endWeight: 0,
+      endTemp: 0,
+      isActive: true,
+    };
+    setIsFeedingActive(true);
+    console.log(`Feeding session started - Weight: ${currentWeight}kg, Temp: ${currentTemp}°C`);
+  };
+
+  const endFeedingSession = async () => {
+    console.log("Ending feeding session");
+    
+    if (feedingSessionRef.current.isActive) {
+      const endWeight = weightRef.current;
+      const endTemp = temperatureRef.current;
+      
+      // Update end values
+      feedingSessionRef.current.endWeight = endWeight;
+      feedingSessionRef.current.endTemp = endTemp;
+      
+      // Calculate weight used (start - end)
+      const weightUsed = feedingSessionRef.current.startWeight - endWeight;
+      
+      // Calculate average temperature
+      const avgTemp = (feedingSessionRef.current.startTemp + endTemp) / 2;
+      
+      console.log(`Feed session stats:
+        Start Weight: ${feedingSessionRef.current.startWeight}kg
+        End Weight: ${endWeight}kg
+        Weight Used: ${weightUsed}kg
+        Start Temp: ${feedingSessionRef.current.startTemp}°C
+        End Temp: ${endTemp}°C
+        Avg Temp: ${avgTemp}°C`);
+      
+      // Create log if weight was used
+      if (weightUsed >= 0) {
+        try {
+          await handleCreateFeedLog(weightUsed, avgTemp);
+          console.log(`Feed log created: ${weightUsed}kg used, avg temp: ${avgTemp}°C`);
+        } catch (error) {
+          console.error("Failed to create feed log:", error);
+        }
+      } else {
+        console.warn(`Negative weight used (${weightUsed}kg), skipping log creation`);
+      }
+      
+      // Reset session
+      feedingSessionRef.current = {
+        startWeight: 0,
+        startTemp: 0,
+        endWeight: 0,
+        endTemp: 0,
+        isActive: false,
+      };
+      setIsFeedingActive(false);
+    } else {
+      console.warn("endFeedingSession called but no active session");
+    }
+  };
 
   const requestPermission = async () => {
     if (Platform.OS === "android") {
@@ -226,7 +314,7 @@ export default function useBLE(): BluetoothApi {
       // Third value is "1" for running, "0" for stopped
       const servoState = values[2].trim() === "1";
       setIsServoRunning(servoState);
-      setIsServoClosed(!servoState); // If running, then NOT closed
+      setIsServoClosed(!servoState);
       console.log("Servo state from data:", servoState ? "RUNNING" : "STOPPED");
     }
   };
@@ -257,5 +345,7 @@ export default function useBLE(): BluetoothApi {
     isServoRunning,
     isServoClosed,
     isFeedingActive,
+    startFeedingSession,
+    endFeedingSession,
   };
 }

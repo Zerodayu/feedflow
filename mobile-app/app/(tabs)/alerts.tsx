@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, FlatList, TouchableOpacity, RefreshControl, Act
 import { mainColors } from '@/utils/global-theme'
 import React, { useEffect, useState } from 'react'
 import { useAlertLogs } from '@/contexts/DBprovider'
-import type { AlertLogType } from '@/database/db-schema'
+import { Trash } from 'lucide-react-native'
 
 export default function Alerts() {
   const { alertLogs, refreshAlerts } = useAlertLogs();
@@ -82,11 +82,11 @@ function AlertList() {
             <Text style={styles.alertBody}>{item.body}</Text>
             <Text style={styles.alertDate}>{formatDate(item.date_created)}</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => handleDeleteAlert(item.id)}
             style={styles.deleteButton}
           >
-            <Text style={styles.deleteText}>✕</Text>
+            <Trash color={mainColors.destructive} />
           </TouchableOpacity>
         </View>
       )}
@@ -163,6 +163,8 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
     marginLeft: 8,
+    backgroundColor: mainColors.destructive + '50',
+    borderRadius: mainColors.radius,
   },
   deleteText: {
     color: '#ff4444',

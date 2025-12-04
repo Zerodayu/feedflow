@@ -8,7 +8,7 @@ import SetBiomassModal from "@/components/setBiomassModal";
 import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
 import { calculateFeedAmount } from "@/actions/send-templogs";
 import { toggleServo } from "@/actions/servo-actions";
-import { Pause, Play } from 'lucide-react-native'
+import { Pause, Play, Zap } from 'lucide-react-native'
 
 export default function Home() {
   const {
@@ -18,6 +18,8 @@ export default function Home() {
     sendCommand,
     isServoClosed,
     isServoRunning,
+    startFeedingSession,
+    endFeedingSession,
   } = useBLEContext();
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
   const { latestFishCount, refreshFishCounts } = useFishCount();
@@ -29,7 +31,7 @@ export default function Home() {
     closed: true
   });
 
-  const MAX_WEIGHT = 100; // Maximum weight capacity in kg
+  const MAX_WEIGHT = 10; // Maximum weight capacity in kg
 
   // Update local state when BLE context changes
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function Home() {
       return;
     }
     try {
-      await toggleServo(servoStatus.closed, sendCommand);
+      await toggleServo(servoStatus.closed, sendCommand, startFeedingSession, endFeedingSession);
     } catch (error) {
       Alert.alert('Error', 'Failed to control servo');
     }
@@ -66,10 +68,10 @@ export default function Home() {
     });
   };
 
-  // Calculate biomass (ABW * Fish Count)
+  // Calculate biomass (ABW * Fish Count) in kg
   const calculateBiomass = () => {
     if (latestAveWeight?.weight && latestFishCount?.count) {
-      return (latestAveWeight.weight * latestFishCount.count).toFixed(2);
+      return (latestAveWeight.weight * latestFishCount.count / 1000).toFixed(2);
     }
     return 'N/A';
   };
@@ -78,13 +80,65 @@ export default function Home() {
   const getAutoFeedAmount = () => {
     const biomass = calculateBiomass();
     if (biomass === 'N/A') return 'N/A';
-    return calculateFeedAmount(parseFloat(biomass), temperature);
+    const feedAmount = calculateFeedAmount(parseFloat(biomass), temperature);
+    return typeof feedAmount === 'number' ? feedAmount.toFixed(2) : feedAmount;
   };
 
   const autoFeedAmount = getAutoFeedAmount();
 
-  // Calculate weight percentage
-  const weightPercentage = ((weight / MAX_WEIGHT) * 100).toFixed(1);
+  // Calculate weight percentage, capped at 100%
+  const weightPercentage = Math.min(((weight / MAX_WEIGHT) * 100), 100).toFixed(1);
+
+  // Auto feed function
+  const handleAutoFeed = async () => {
+    if (!connectedDevice) {
+      Alert.alert('Error', 'Please connect to device first');
+      return;
+    }
+
+    if (autoFeedAmount === 'N/A') {
+      Alert.alert('Error', 'Cannot calculate feed amount. Please set biomass data first.');
+      return;
+    }
+
+    const currentWeight = parseFloat(weightPercentage);
+    const feedAmount = parseFloat(autoFeedAmount);
+
+    // Check if there's enough feed in the container
+    if (currentWeight < 10) {
+      Alert.alert('Warning', 'Feed level is low. Please refill the container.');
+      return;
+    }
+
+    try {
+      // Calculate feeding duration based on feed amount
+      // Assuming 1 kg/day = continuous running for proportional time
+      // Adjust the multiplier based on your servo's actual dispensing rate
+      const durationSeconds = Math.min(feedAmount * 10, 60); // Max 60 seconds
+
+      Alert.alert(
+        'Auto Feed',
+        `Starting automatic feeding for ${durationSeconds.toFixed(0)} seconds\nDispensing approximately ${feedAmount} kg`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start',
+            onPress: async () => {
+              await sendCommand("RUN");
+
+              // Stop after calculated duration
+              setTimeout(async () => {
+                await sendCommand("STOP");
+                Alert.alert('Success', 'Auto feeding completed');
+              }, durationSeconds * 1000);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start auto feeding');
+    }
+  };
 
   return (
     <View style={styles.base}>
@@ -161,10 +215,21 @@ export default function Home() {
             )}
           </View>
         </View>
-
         <TouchableOpacity
           style={[
             buttonS.primary,
+            (!connectedDevice || autoFeedAmount === 'N/A') && { opacity: 0.5 }
+          ]}
+          onPress={handleAutoFeed}
+          disabled={!connectedDevice || autoFeedAmount === 'N/A'}
+        >
+          <Zap color={mainColors.foreground} />
+          <Text style={styles.textValue2}>Auto Feed</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            buttonS.secondary,
             !connectedDevice && { opacity: 0.5 }
           ]}
           onPress={handleToggleServo}
@@ -179,6 +244,7 @@ export default function Home() {
             {servoStatus.running ? 'Stop Feeding' : 'Start Feeding'}
           </Text>
         </TouchableOpacity>
+
       </View>
 
       <SetBiomassModal
