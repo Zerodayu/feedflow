@@ -37,7 +37,7 @@ int servoDirection = 1;  // 1 = forward, -1 = backward
 const int SERVO_MIN = 0;
 const int SERVO_MAX = 180;
 const int SERVO_STEP = 2;  // degrees per step
-const unsigned long SERVO_UPDATE_MS = 15UL;  // 15ms = faster movement
+const unsigned long SERVO_UPDATE_MS = 20UL;  // 15ms = faster movement
 bool servoRunning = false;  // Servo state: true = running, false = stopped
 
 // ------------------- TIMING / FILTER -------------------
