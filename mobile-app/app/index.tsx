@@ -44,7 +44,7 @@ export default function Index() {
           resizeMode="contain"
         />
       </View>
-      <Link href="/(tabs)"> go to tabs</Link>
+      {/* <Link href="/(tabs)"> go to tabs</Link> */}
       <View style={styles.boxDown}>
         <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
           <Power color={mainColors.foreground} />
