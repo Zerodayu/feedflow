@@ -1,10 +1,8 @@
 import DeviceModal from '@/components/DeviceConnectionModal';
 import { useBLEContext } from '@/contexts/BLEprovider';
-import { buttonS } from '@/styles/buttons';
 import { mainColors } from '@/utils/global-theme';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
-import { Link } from 'expo-router';
 import { Power } from 'lucide-react-native'
 
 export default function Index() {
@@ -46,7 +44,6 @@ export default function Index() {
         />
       </View>
       <View style={styles.boxDown}>
-        <Link href="/(tabs)" style={buttonS.ghost}>ENTER</Link>
         <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
           <Power color={mainColors.foreground} />
           <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
