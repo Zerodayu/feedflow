@@ -2,15 +2,23 @@ import { buttonS } from "@/styles/buttons";
 import { mainColors } from "@/utils/global-theme";
 import Feather from '@expo/vector-icons/Feather';
 import { useBLEContext } from "@/contexts/BLEprovider";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
 import { useState } from "react";
 import SetBiomassModal from "@/components/setBiomassModal";
 import { useAveWeight, useFishCount } from "@/contexts/DBprovider";
 import { calculateFeedAmount } from "@/actions/send-templogs";
-
+import { toggleServo } from "@/actions/servo-actions";
 
 export default function Home() {
-  const { connectedDevice, weight, temperature } = useBLEContext();
+  const { 
+    connectedDevice, 
+    weight, 
+    temperature, 
+    sendCommand, 
+    isServoClosed, 
+    isServoRunning,
+    servoAngle 
+  } = useBLEContext();
   const { latestAveWeight, refreshAveWeights } = useAveWeight();
   const { latestFishCount, refreshFishCounts } = useFishCount();
   const [showBiomassModal, setShowBiomassModal] = useState(false);
@@ -20,6 +28,18 @@ export default function Home() {
     setShowBiomassModal(false);
     await refreshAveWeights();
     await refreshFishCounts();
+  };
+
+  const handleToggleServo = async () => {
+    if (!connectedDevice) {
+      Alert.alert('Error', 'Please connect to device first');
+      return;
+    }
+    try {
+      await toggleServo(isServoClosed, sendCommand);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to control servo');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -103,6 +123,18 @@ export default function Home() {
       {/* Dispense Feed */}
       <View style={styles.dispenseFeedBox}>
         <Text style={styles.title}>Dispense Feed</Text>
+        
+        {/* Servo Status Display */}
+        <View style={styles.servoStatusBox}>
+          <Text style={styles.text}>
+            Servo Status: {isServoClosed ? 'Closed' : 'Open'}
+          </Text>
+          <Text style={styles.text}>
+            Running: {isServoRunning ? 'Yes' : 'No'}
+          </Text>
+          <Text style={styles.text}>Angle: {servoAngle}°</Text>
+        </View>
+
         <View style={styles.box}>
           <View style={styles.feedInfoContainer}>
             <Text style={styles.feedLabel}>Daily Feed Rate:</Text>
@@ -116,9 +148,16 @@ export default function Home() {
             )}
           </View>
         </View>
-        <TouchableOpacity style={buttonS.primary}>
+        
+        <TouchableOpacity 
+          style={buttonS.primary}
+          onPress={handleToggleServo}
+          disabled={!connectedDevice}
+        >
           <Feather name="check" size={24} color={mainColors.foreground} />
-          <Text style={styles.textValue2}>Feed Now</Text>
+          <Text style={styles.textValue2}>
+            {isServoClosed ? 'Open Servo' : 'Close Servo'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -181,6 +220,14 @@ const styles = StyleSheet.create({
     minWidth: "100%",
     marginTop: 20,
     gap: 6,
+  },
+  servoStatusBox: {
+    padding: 10,
+    backgroundColor: mainColors.accent,
+    borderWidth: 1,
+    borderColor: mainColors.primary,
+    borderRadius: mainColors.sm,
+    gap: 4,
   },
   title: {
     fontSize: 16,

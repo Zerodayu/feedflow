@@ -20,6 +20,10 @@ interface BluetoothApi {
   sendCommand: (command: string) => Promise<void>;
   weight: number;
   temperature: number;
+  servoAngle: number;
+  isServoRunning: boolean;
+  isServoClosed: boolean;
+  isFeedingActive: boolean;
 }
 
 const bleManager = new BleManager();
@@ -29,6 +33,10 @@ export default function useBLE(): BluetoothApi {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [weight, setWeight] = useState<number>(0);
   const [temperature, setTemperature] = useState<number>(0);
+  const [servoAngle, setServoAngle] = useState<number>(0);
+  const [isServoRunning, setIsServoRunning] = useState<boolean>(false);
+  const [isServoClosed, setIsServoClosed] = useState<boolean>(true);
+  const [isFeedingActive, setIsFeedingActive] = useState<boolean>(false);
   const { createTempLog } = useTempLogs();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const temperatureRef = useRef<number>(0);
@@ -176,15 +184,31 @@ export default function useBLE(): BluetoothApi {
     const rawData = decode(characteristic.value);
     console.log("Received data:", rawData);
 
+    // Arduino sends: "temperature,weight,servoAngle,feedingActive"
     const values = rawData.split(",");
+    
+    if (values.length >= 1) {
+      const temperatureValue = parseFloat(values[0]);
+      setTemperature(temperatureValue);
+    }
+    
     if (values.length >= 2) {
       const weightValue = parseFloat(values[1]);
       setWeight(weightValue);
     }
-
-     if (values.length >= 1) {
-      const temperatureValue = parseFloat(values[0]);
-      setTemperature(temperatureValue);
+    
+    if (values.length >= 3) {
+      const angle = parseInt(values[2]);
+      setServoAngle(angle);
+      // Servo is running if angle is at the open position (130)
+      setIsServoRunning(angle >= 100);
+      // Servo is closed if angle is at or near the close position (30)
+      setIsServoClosed(angle <= 50);
+    }
+    
+    if (values.length >= 4) {
+      const feedingActive = parseInt(values[3]) === 1;
+      setIsFeedingActive(feedingActive);
     }
   };
 
@@ -210,5 +234,9 @@ export default function useBLE(): BluetoothApi {
     sendCommand,
     weight,
     temperature,
+    servoAngle,
+    isServoRunning,
+    isServoClosed,
+    isFeedingActive,
   };
 }

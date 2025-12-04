@@ -59,6 +59,7 @@ float filteredKg = 0.0f;
 float rawBuf = 0.0f;
 unsigned long lastTempTime = 0;
 float lastTemp = 0.0f;
+bool servoIsOpen = false;  // Add this line to track servo state
 
 // Helper to write a 0..360 "angle" to the servo
 void writeServo360(int angle)
@@ -102,12 +103,14 @@ class CommandCallbacks : public BLECharacteristicCallbacks
         float req = cmd.substring(9).toFloat();
         if (req > 0.0f && req <= FEED_MAX_KG)
         {
+          manualServoControl = false;
           targetKg = req;
           startWeight = filteredKg;
           feedRequestActive = true;
           feedStartTime = millis();
-          servoAngle = feedOpenAngle;  // Open servo to start dispensing
+          servoAngle = feedOpenAngle;
           writeServo360(servoAngle);
+          servoIsOpen = true;  // Add this line
           pCharData->setValue("FEEDING_STARTED");
           pCharData->notify();
           Serial.println("Servo OPEN - Dispensing...");
@@ -115,14 +118,20 @@ class CommandCallbacks : public BLECharacteristicCallbacks
       }
       else if (cmd == "SERVO_OPEN")
       {
+        manualServoControl = true;  // Add this line
+        feedRequestActive = false;  // Add this line
         servoAngle = feedOpenAngle;
         writeServo360(servoAngle);
+        servoIsOpen = true;  // Add this line
         Serial.println("Manual: Servo OPEN");
       }
       else if (cmd == "SERVO_CLOSE")
       {
+        manualServoControl = false;  // Add this line
+        feedRequestActive = false;   // Add this line
         servoAngle = feedCloseAngle;
         writeServo360(servoAngle);
+        servoIsOpen = false;  // Add this line
         Serial.println("Manual: Servo CLOSE");
       }
     }
@@ -213,6 +222,7 @@ void loop()
         feedStartTime = millis();
         servoAngle = feedOpenAngle;
         writeServo360(servoAngle);
+        servoIsOpen = true;  // Update state
         Serial.println("FEEDING_STARTED - Servo OPEN");
       }
       else
@@ -226,6 +236,7 @@ void loop()
       feedRequestActive = false;  // Stop auto feeding
       servoAngle = feedOpenAngle;
       writeServo360(servoAngle);
+      servoIsOpen = true;  // Update state
       Serial.println("Manual: Servo OPEN");
     }
     else if (cmd == "SERVO_CLOSE")
@@ -234,6 +245,7 @@ void loop()
       feedRequestActive = false;   // Stop auto feeding
       servoAngle = feedCloseAngle;
       writeServo360(servoAngle);
+      servoIsOpen = false;  // Update state
       Serial.println("Manual: Servo CLOSE");
     }
     else if (cmd == "STATUS")
@@ -247,6 +259,8 @@ void loop()
       Serial.println(" C");
       Serial.print("Servo Angle: ");
       Serial.println(servoAngle);
+      Serial.print("Servo State: ");
+      Serial.println(servoIsOpen ? "OPEN" : "CLOSED");  // Show servo state
       Serial.print("Manual Control: ");
       Serial.println(manualServoControl ? "YES" : "NO");
       Serial.print("Feeding Active: ");
@@ -295,7 +309,9 @@ void loop()
     Serial.print("Temp C: ");
     Serial.print(tempC);
     Serial.print(" | Weight kg: ");
-    Serial.println(filteredKg, 3);
+    Serial.print(filteredKg, 3);
+    Serial.print(" | Servo: ");
+    Serial.println(servoIsOpen ? "OPEN" : "CLOSED");  // Log servo state
 
     float outKg = (filteredKg >= DETECT_THRESHOLD_KG) ? filteredKg : 0.0f;
 
@@ -317,6 +333,7 @@ void loop()
       feedRequestActive = false;
       servoAngle = feedCloseAngle;
       writeServo360(servoAngle);
+      servoIsOpen = false;  // Update state
       if (deviceConnected) {
         pCharData->setValue("FEED_TIMEOUT");
         pCharData->notify();
@@ -326,29 +343,18 @@ void loop()
     else
     {
       float dispensed = filteredKg - startWeight;
-      if (dispensed < 0) dispensed = 0;
-
       if (dispensed >= targetKg)
       {
         feedRequestActive = false;
         servoAngle = feedCloseAngle;
         writeServo360(servoAngle);
+        servoIsOpen = false;  // Update state
         if (deviceConnected) {
-          pCharData->setValue("FEEDING_DONE");
+          pCharData->setValue("FEEDING_COMPLETE");
           pCharData->notify();
         }
-        Serial.print("Target reached (");
-        Serial.print(dispensed, 3);
-        Serial.println(" kg) - Servo CLOSED");
+        Serial.println("Feed complete - Servo CLOSED");
       }
-      // Servo stays OPEN while feeding
     }
-  }
-  
-  // ----- MANUAL SERVO MODE -----
-  // Keep servo in position if in manual mode and not feeding
-  if (manualServoControl && !feedRequestActive)
-  {
-    writeServo360(servoAngle);  // Maintain servo position
   }
 }

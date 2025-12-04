@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { mainColors } from "../utils/global-theme";
 import { BLEProvider } from '@/contexts/BLEprovider';
@@ -11,13 +11,14 @@ export default function RootLayout() {
       <DatabaseProvider>
         <BLEProvider>
           <StatusBar style="dark" translucent />
-          <Stack screenOptions={{
+          {/* <Stack screenOptions={{
             headerStyle: { backgroundColor: mainColors.background },
             headerTitleStyle: { color: mainColors.foreground }
           }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
+          </Stack> */}
+          <Slot />
         </BLEProvider>
       </DatabaseProvider>
     </SafeAreaView>

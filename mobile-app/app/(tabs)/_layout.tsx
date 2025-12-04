@@ -1,7 +1,7 @@
 import { mainColors } from "@/utils/global-theme";
 import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useBLEContext } from "@/contexts/BLEprovider";
 import {
   ChartPie,
@@ -10,6 +10,8 @@ import {
   NotebookPen,
   TriangleAlert
 } from "lucide-react-native";
+import { useState } from "react";
+import DeviceModal from "@/components/DeviceConnectionModal";
 
 
 export default function RootLayout() {
@@ -31,7 +33,7 @@ export default function RootLayout() {
             paddingTop: 5,
           },
           tabBarActiveTintColor: mainColors.primary,
-          tabBarInactiveTintColor: mainColors.foreground+50,
+          tabBarInactiveTintColor: mainColors.foreground + 50,
         }}
       >
         <Tabs.Screen
@@ -76,17 +78,48 @@ export default function RootLayout() {
 }
 
 function Header() {
-  const { connectedDevice } = useBLEContext();
+  const { connectedDevice, disconnectFromDevice, allDevices, connectToDevice, scanForPeripherals } = useBLEContext();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const handleButtonPress = () => {
+    if (connectedDevice) {
+      disconnectFromDevice();
+    } else {
+      scanForPeripherals();
+      setIsModalVisible(true);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+  };
 
   return (
-    <View style={styles.header}>
-      <Text style={styles.title}>FeedFlow</Text>
-      <Text
-        style={connectedDevice ? styles.connectedText : styles.disconnectedText}
-      >
-        {connectedDevice ? `Connected: ${connectedDevice.name}` : "Disconnected"}
-      </Text>
-    </View>
+    <>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>FeedFlow</Text>
+          <Text
+            style={connectedDevice ? styles.connectedText : styles.disconnectedText}
+          >
+            {connectedDevice ? `Connected: ${connectedDevice.name}` : "Disconnected"}
+          </Text>
+        </View>
+        <View>
+          <TouchableOpacity onPress={handleButtonPress} style={styles.button}>
+            <Text style={styles.buttonText}>
+              {connectedDevice ? "Disconnect" : "Connect"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <DeviceModal
+        devices={allDevices}
+        visible={isModalVisible}
+        connectToPeripheral={connectToDevice}
+        closeModal={closeModal}
+      />
+    </>
   );
 }
 
@@ -96,6 +129,9 @@ const styles = StyleSheet.create({
     backgroundColor: mainColors.background,
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     minWidth: "100%",
     backgroundColor: mainColors.primary,
     padding: 10,
@@ -113,5 +149,15 @@ const styles = StyleSheet.create({
     color: mainColors.primaryForeground,
     fontWeight: "bold",
     fontFamily: "monospace",
+  },
+  button: {
+    backgroundColor: mainColors.accent,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: mainColors.md,
+  },
+  buttonText: {
+    color: mainColors.foreground,
+    fontWeight: "bold",
   },
 })

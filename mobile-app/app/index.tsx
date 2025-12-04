@@ -2,13 +2,12 @@ import DeviceModal from '@/components/DeviceConnectionModal';
 import { useBLEContext } from '@/contexts/BLEprovider';
 import { buttonS } from '@/styles/buttons';
 import { mainColors } from '@/utils/global-theme';
-import { Link } from 'expo-router';
 import { useState } from 'react';
-import { useSendFeedLogs } from '@/actions/send-feedlogs';
-import { StyleSheet, Text, TouchableOpacity, View, Button } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Link } from 'expo-router';
+import { Power } from 'lucide-react-native'
 
 export default function Index() {
-  const { handleSendLogs } = useSendFeedLogs();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const {
     requestPermission,
@@ -17,8 +16,6 @@ export default function Index() {
     connectToDevice,
     connectedDevice,
     disconnectFromDevice,
-    weight,
-    temperature
   } = useBLEContext();
 
   const hideModal = () => {
@@ -40,20 +37,27 @@ export default function Index() {
 
   return (
     <View style={styles.base}>
-      <Link href="/(tabs)" style={buttonS.outline}>Go to Some Path</Link>
-      <Text style={styles.link}>{connectedDevice ? `Connected to: ${connectedDevice.name ?? connectedDevice.id}` : "Not connected"}</Text>
-      <Text style={styles.ctaButtonText}>Weight: {weight} kg</Text>
-      <Text style={styles.ctaButtonText}>Temperature: {temperature} °C</Text>
-      <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={buttonS.primary}>
-        <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
-      </TouchableOpacity>
-      <Button title="Send Feed Logs" onPress={handleSendLogs} />
-      <DeviceModal
-        devices={allDevices}
-        visible={isModalVisible}
-        connectToPeripheral={connectToDevice}
-        closeModal={hideModal}
-      />
+      <View style={styles.boxUp}>
+        <Text style={styles.title}>Get Started</Text>
+        <Image
+          source={require('@/assets/images/codesandbox.png')}
+          style={{ width: 300, height: 300, marginTop: 20 }}
+          resizeMode="contain"
+        />
+      </View>
+      <View style={styles.boxDown}>
+        <Link href="/(tabs)" style={buttonS.ghost}>ENTER</Link>
+        <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
+          <Power color={mainColors.foreground} />
+          <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
+        </TouchableOpacity>
+        <DeviceModal
+          devices={allDevices}
+          visible={isModalVisible}
+          connectToPeripheral={connectToDevice}
+          closeModal={hideModal}
+        />
+      </View>
     </View>
   );
 }
@@ -66,19 +70,32 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: mainColors.background,
   },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-    color: mainColors.accent,
+  boxUp: {
+    flex: 1,
+    width: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  boxDown: {
+    flex: 1,
+    width: "100%",
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: mainColors.primary,
   },
   ctaButton: {
+    flexDirection: "row",
     backgroundColor: mainColors.primary,
     justifyContent: "center",
     alignItems: "center",
-    height: 50,
-    marginHorizontal: 20,
-    marginBottom: 5,
-    borderRadius: 8,
+    paddingVertical: 12,
+    gap: 10,
+    width: "100%",
+    borderRadius: mainColors.radius,
   },
   ctaButtonText: {
     fontSize: 18,

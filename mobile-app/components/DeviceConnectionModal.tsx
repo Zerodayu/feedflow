@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Device } from "react-native-ble-plx";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 type DeviceModalListItemProps = {
   item: ListRenderItemInfo<Device>;
@@ -26,11 +27,13 @@ type DeviceModalProps = {
 
 const DeviceModalListItem: FC<DeviceModalListItemProps> = (props) => {
   const { item, connectToPeripheral, closeModal } = props;
+  const router = useRouter();
 
-  const connectAndCloseModal = useCallback(() => {
-    connectToPeripheral(item.item);
+  const connectAndCloseModal = useCallback(async () => {
+    await connectToPeripheral(item.item);
     closeModal();
-  }, [closeModal, connectToPeripheral, item.item]);
+    router.replace('/(tabs)');
+  }, [closeModal, connectToPeripheral, item.item, router]);
 
   return (
     <TouchableOpacity
