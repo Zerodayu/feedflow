@@ -1,7 +1,7 @@
 import { mainColors } from '@/utils/global-theme';
 import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { ArrowRight } from 'lucide-react-native'
-import { router } from 'expo-router';
+import { router, Link } from 'expo-router';
 
 export default function Index() {
   const next = () => {
@@ -17,7 +17,7 @@ export default function Index() {
           resizeMode="contain"
         />
       </View>
-      <Text style={styles.text}>Ready to make fish farming easier and smarter?</Text>
+      <Link href="/(tabs)" style={styles.text}>Ready to make fish farming easier and smarter?</Link>
       <View style={styles.boxDown}>
         <TouchableOpacity onPress={next} style={styles.nextButton}>
           <ArrowRight color={mainColors.foreground} />

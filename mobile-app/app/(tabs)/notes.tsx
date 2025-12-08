@@ -107,7 +107,7 @@ export default function Notes() {
       </View>
 
       <View style={styles.noteInfo}>
-        <Text style={styles.infoText}>Fish Count: {item.fish_count}</Text>
+        <Text style={styles.infoText}>Number Dead Fish: {item.fish_count}</Text>
         <Text style={styles.infoText}>Temp: {item.temperature}°C</Text>
       </View>
 
@@ -181,7 +181,7 @@ export default function Notes() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Fish Count <Text style={styles.required}>*</Text></Text>
+              <Text style={styles.label}>Dead Fish Count <Text style={styles.required}>*</Text></Text>
               <TextInput
                 style={styles.input}
                 placeholder="Enter fish count"
