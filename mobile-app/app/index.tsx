@@ -1,61 +1,28 @@
-import DeviceModal from '@/components/DeviceConnectionModal';
-import { useBLEContext } from '@/contexts/BLEprovider';
 import { mainColors } from '@/utils/global-theme';
-import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
-import { Link } from 'expo-router';
-import { Power } from 'lucide-react-native'
+import { ArrowRight } from 'lucide-react-native'
+import { router } from 'expo-router';
 
 export default function Index() {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const {
-    requestPermission,
-    scanForPeripherals,
-    allDevices,
-    connectToDevice,
-    connectedDevice,
-    disconnectFromDevice,
-  } = useBLEContext();
-
-  const hideModal = () => {
-    setIsModalVisible(false);
-  };
-
-  const openModal = async () => {
-    scanForDevices();
-    setIsModalVisible(true);
-  };
-
-  const scanForDevices = async () => {
-    const isPermissionEnabled = await requestPermission();
-
-    if (isPermissionEnabled) {
-      scanForPeripherals();
-    }
-  };
+  const next = () => {
+    router.push('/setup');
+  }
 
   return (
     <View style={styles.base}>
       <View style={styles.boxUp}>
-        <Text style={styles.title}>Get Started</Text>
         <Image
           source={require('@/assets/images/logo.png')}
           style={{ width: 300, height: 300, marginTop: 20 }}
           resizeMode="contain"
         />
       </View>
-      {/* <Link href="/(tabs)"> go to tabs</Link> */}
+      <Text style={styles.text}>Ready to make fish farming easier and smarter?</Text>
       <View style={styles.boxDown}>
-        <TouchableOpacity onPress={connectedDevice ? disconnectFromDevice : openModal} style={styles.ctaButton}>
-          <Power color={mainColors.foreground} />
-          <Text style={styles.ctaButtonText}>{connectedDevice ? "Disconnect" : "Connect"}</Text>
+        <TouchableOpacity onPress={next} style={styles.nextButton}>
+          <ArrowRight color={mainColors.foreground} />
+          <Text style={styles.nextButtonText}>Get Started</Text>
         </TouchableOpacity>
-        <DeviceModal
-          devices={allDevices}
-          visible={isModalVisible}
-          connectToPeripheral={connectToDevice}
-          closeModal={hideModal}
-        />
       </View>
     </View>
   );
@@ -70,7 +37,7 @@ const styles = StyleSheet.create({
     backgroundColor: mainColors.background,
   },
   boxUp: {
-    flex: 1,
+    flex: 2,
     width: "100%",
     justifyContent: 'center',
     alignItems: 'center',
@@ -81,14 +48,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
+  text: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: mainColors.primary,
+    textAlign: 'center',
+    color: mainColors.foreground,
   },
-  ctaButton: {
+  nextButton: {
     flexDirection: "row",
-    backgroundColor: mainColors.primary,
+    backgroundColor: mainColors.accent,
+    borderWidth: 2,
+    borderColor: mainColors.primary,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 12,
@@ -96,7 +66,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: mainColors.radius,
   },
-  ctaButtonText: {
+  nextButtonText: {
     fontSize: 18,
     fontWeight: "bold",
     color: mainColors.foreground,
