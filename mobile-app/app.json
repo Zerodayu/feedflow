@@ -84,6 +84,12 @@
         "projectId": "e5c93ce9-c55f-4192-b30d-56f0108ab5a9"
       }
     },
-    "owner": "zerodayu"
+    "owner": "zerodayu",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e5c93ce9-c55f-4192-b30d-56f0108ab5a9"
+    }
   }
 }
