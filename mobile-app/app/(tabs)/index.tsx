@@ -162,7 +162,7 @@ export default function Home() {
   // Calculate biomass (ABW * Fish Count) in kg
   const calculateBiomass = () => {
     if (latestAveWeight?.weight && latestFishCount?.count) {
-      return (latestAveWeight.weight * latestFishCount.count / 1000).toFixed(2);
+      return (latestAveWeight.weight * latestFishCount.count / 100).toFixed(2);
     }
     return 'N/A';
   };
@@ -213,7 +213,7 @@ export default function Home() {
 
       Alert.alert(
         'Auto Feed',
-        `Starting automatic feeding for ${durationSeconds.toFixed(0)} seconds\nDispensing approximately ${feedAmount} kg`,
+        `Starting automatic feeding for ${durationSeconds.toFixed(0)} seconds\nDispensing approximately ${feedAmount} g`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -273,7 +273,7 @@ export default function Home() {
         </View>
         <View style={styles.container1}>
           <Text style={styles.text}>Biomass</Text>
-          <Text style={styles.textValue}>{calculateBiomass()} kg</Text>
+          <Text style={styles.textValue}>{calculateBiomass()}g</Text>
         </View>
       </View>
 
@@ -302,11 +302,11 @@ export default function Home() {
           <View style={styles.feedInfoContainer}>
             <Text style={styles.feedLabel}>Daily Feed Rate:</Text>
             <Text style={styles.textValue2}>
-              {autoFeedAmount === 'N/A' ? 'N/A' : `${autoFeedAmount} kg/day`}
+              {autoFeedAmount === 'N/A' ? 'N/A' : `${autoFeedAmount}g/day`}
             </Text>
             {autoFeedAmount !== 'N/A' && (
               <Text style={styles.feedSubtext}>
-                Based on {calculateBiomass()} kg biomass at {temperature}°C
+                Based on {calculateBiomass()}g biomass at {temperature}°C
               </Text>
             )}
           </View>
