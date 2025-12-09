@@ -101,6 +101,8 @@ const modalStyle = StyleSheet.create({
   },
   modalFlatlistContainer: {
     justifyContent: "center",
+    paddingHorizontal: 20,
+    width: "100%",
     flexGrow: 1,
   },
   box: {
@@ -143,7 +145,8 @@ const modalStyle = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     height: 50,
-    marginHorizontal: 20,
+    width: "100%",
+    paddingHorizontal: 20,
     marginBottom: 5,
     borderRadius: 100,
   },

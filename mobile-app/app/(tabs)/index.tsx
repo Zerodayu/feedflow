@@ -38,7 +38,7 @@ export default function Home() {
     closed: true
   });
 
-  const MAX_WEIGHT = 10; // Maximum weight capacity in kg
+  const MAX_WEIGHT = 50; // Maximum weight capacity in kg
 
   // Get the single schedule (should only be one)
   const currentSchedule = scheduleFeeds.length > 0 ? scheduleFeeds[0] : null;
@@ -249,7 +249,7 @@ export default function Home() {
         <View style={styles.container}>
           <Text style={styles.text}>Feed Level</Text>
           <Text style={styles.textValue}>{weightPercentage}%</Text>
-          <Text style={styles.text}>Refil Soon</Text>
+          <Text style={styles.text}>Refill Soon</Text>
         </View>
       </View>
       <View style={styles.box1}>
