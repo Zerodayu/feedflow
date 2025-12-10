@@ -302,7 +302,7 @@ export default function Home() {
           <View style={styles.feedInfoContainer}>
             <Text style={styles.feedLabel}>Daily Feed Rate:</Text>
             <Text style={styles.textValue2}>
-              {autoFeedAmount === 'N/A' ? 'N/A' : `${autoFeedAmount}g/day`}
+              {autoFeedAmount === 'N/A' ? 'N/A' : `${autoFeedAmount}kg/day`}
             </Text>
             {autoFeedAmount !== 'N/A' && (
               <Text style={styles.feedSubtext}>
