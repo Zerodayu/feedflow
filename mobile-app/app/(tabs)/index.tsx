@@ -162,7 +162,7 @@ export default function Home() {
   // Calculate biomass (ABW * Fish Count) in kg
   const calculateBiomass = () => {
     if (latestAveWeight?.weight && latestFishCount?.count) {
-      return (latestAveWeight.weight * latestFishCount.count / 1000).toFixed(2);
+      return (latestAveWeight.weight * latestFishCount.count).toFixed(0);
     }
     return 'N/A';
   };
