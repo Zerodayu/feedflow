@@ -27,10 +27,10 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    const weightValue = parseFloat(weight);
+    const weightInGrams = parseFloat(weight);
     const fishCountValue = parseInt(fishCount, 10);
     
-    if (isNaN(weightValue) || weightValue <= 0) {
+    if (isNaN(weightInGrams) || weightInGrams <= 0) {
       alert("Please enter a valid weight");
       return;
     }
@@ -42,7 +42,9 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
 
     setIsSubmitting(true);
     try {
-      const weightResult = await handleSendAveWeight(weightValue);
+      // Convert grams to kg before saving
+      const weightInKg = weightInGrams / 1000;
+      const weightResult = await handleSendAveWeight(weightInKg);
       const fishCountResult = await handleSendFishCount(fishCountValue);
       
       if (weightResult.success && fishCountResult.success) {
@@ -79,10 +81,10 @@ const SetBiomassModal: FC<SetBiomassModalProps> = (props) => {
             <Text style={modalStyle.modalTitle}>Set Biomass Data</Text>
             
             <View style={modalStyle.inputContainer}>
-              <Text style={modalStyle.label}>Average Weight (kg)</Text>
+              <Text style={modalStyle.label}>Average Weight (g)</Text>
               <TextInput
                 style={modalStyle.input}
-                placeholder="Enter weight"
+                placeholder="Enter weight in grams"
                 placeholderTextColor={mainColors.foreground+50}
                 keyboardType="decimal-pad"
                 value={weight}
