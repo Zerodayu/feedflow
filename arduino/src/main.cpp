@@ -140,11 +140,11 @@ void setup()
 
   // ---------- LOAD CELL ----------
   LoadCell.begin();
-  float calibrationValue = 17102.86;
+  float calibrationValue = 20188.57;
   EEPROM.get(calVal_eepromAdress, calibrationValue);
   if (!(calibrationValue > 0.0 && calibrationValue < 1e9))
   {
-    calibrationValue = 17102.86;
+    calibrationValue = 20188.57;
     EEPROM.put(calVal_eepromAdress, calibrationValue);
     EEPROM.commit();
   }

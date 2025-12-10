@@ -162,7 +162,7 @@ export default function Home() {
   // Calculate biomass (ABW * Fish Count) in kg
   const calculateBiomass = () => {
     if (latestAveWeight?.weight && latestFishCount?.count) {
-      return (latestAveWeight.weight * latestFishCount.count / 100).toFixed(2);
+      return (latestAveWeight.weight * latestFishCount.count / 1000).toFixed(2);
     }
     return 'N/A';
   };
@@ -256,7 +256,7 @@ export default function Home() {
         <View style={styles.container1}>
           <Text style={styles.text1}>ABW</Text>
           <Text style={styles.textValue}>
-            {latestAveWeight?.weight ? `${latestAveWeight.weight} kg` : 'N/A'}
+            {latestAveWeight?.weight ? `${(latestAveWeight.weight * 1000).toFixed(2)}g` : 'N/A'}
           </Text>
           <Text style={styles.text}>
             {latestAveWeight?.date ? formatDate(latestAveWeight.date) : '-'}
@@ -273,7 +273,7 @@ export default function Home() {
         </View>
         <View style={styles.container1}>
           <Text style={styles.text}>Biomass</Text>
-          <Text style={styles.textValue}>{calculateBiomass()}g</Text>
+          <Text style={styles.textValue}>{calculateBiomass()} kg</Text>
         </View>
       </View>
 
@@ -306,7 +306,7 @@ export default function Home() {
             </Text>
             {autoFeedAmount !== 'N/A' && (
               <Text style={styles.feedSubtext}>
-                Based on {calculateBiomass()}g biomass at {temperature}°C
+                Based on {calculateBiomass()} kg biomass at {temperature}°C
               </Text>
             )}
           </View>
